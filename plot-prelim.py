@@ -17,6 +17,7 @@ import numpy as np
 import numpy.ma as ma
 import pandas as pd
 import xarray as xr
+from io import StringIO
 # Plotting libraries:
 import matplotlib
 import matplotlib.pyplot as plt; plt.close('all')
@@ -56,6 +57,11 @@ warnings.filterwarnings("ignore", category=UserWarning)
 #------------------------------------------------------------------------------
 # SETTINGS: 
 #------------------------------------------------------------------------------
+plot_timeseries = True
+plot_monthly_climatology = True
+plot_annual_mean = False
+plot_stations = False
+
 fontsize = 20
 
 #------------------------------------------------------------------------------
@@ -178,6 +184,83 @@ plt.savefig(filename_txt + '_anomaly-stripes.png')
 plt.close(fig)
 
 #------------------------------------------------------------------------------
+# I/O: stat4.CRUTEM5.1prelim01.1721-2019.txt (text dump from CDF4)
+#------------------------------------------------------------------------------
+
+# load .txt file (comma separated) into pandas dataframe
+
+filename_txt = 'stat4.CRUTEM5.1prelim01.1721-2019.txt'
+#067250 464  -78 1538 BLATTEN, LOETSCHENTA SWITZERLAND   20012012  982001    9999
+#1921  -44  -71  -68  -46  -12   17   42   53   27  -20  -21  -40
+
+linelist = []
+stationinfo = []
+stationcode = []
+stationcountry = []
+with open (filename_txt, 'rt') as f:      
+    for line in f:   
+        if len(line)>1: # ignore empty lines         
+            if (len(line.strip().split())!=13)|(len(line.split()[0])>4):                
+                # when line is stationinfo extract stationid and stationname
+                stationinfo.append(line.strip())   
+                stationid = line.strip().split()[0][0:6]
+                stationname = line.strip().split()[-4]
+            else:                    
+                # append monthly anomalies in [K] & stationid, stationname 
+                linelist.append(line.strip())   
+                stationcode.append(stationid)
+                stationcountry.append(stationname)
+        else:
+            continue
+f.close
+
+# construct dataframe
+df = pd.DataFrame(columns=['year','1','2','3','4','5','6','7','8','9','10','11','12','stationcode','stationcountry'])
+for j in range(1,12+1):
+    df[df.columns[j]] = [ int(linelist[i].split()[j]) for i in range(len(linelist)) ]
+    fillval = -999
+    df.replace(fillval, np.NaN, inplace=True) 
+df['year'] = [ int(linelist[i].split()[0]) for i in range(len(linelist)) ]
+df['stationcode'] = stationcode
+df['stationcountry'] = stationcountry
+
+# temperature conversions (if needed):
+# for j in range(1,13):
+#    df[df.columns[j]] = df[df.columns[j]] - 273.15          # K --> Centigrade
+#    df[df.columns[j]] = (df[df.columns[j]]*(9/5.)) − 459.67 # K --> Fahrenheit
+
+# PLOT: seasonal cycle per station
+
+#for j in range(len(np.unique(stationcode))):
+for j in range(10):
+
+    x = df[df['stationcode']==np.unique(stationcode)[j]].iloc[:,0]    
+    Y = df[df['stationcode']==np.unique(stationcode)[j]].iloc[:,range(1,13)].T   
+    figstr = 'seasonal-cycle_' + np.unique(stationcode)[j] + '.png'
+    titlestr = 'Seasonal cycle: ' + np.unique(stationcode)[j]
+
+    fig, ax = plt.subplots(figsize=(15,10))      
+    plt.plot(np.arange(1,13),Y)
+    plt.title(titlestr, fontsize=fontsize)
+    plt.savefig(figstr)
+    plt.close(fig)
+
+# PLOT: timeseries per station
+
+for j in range(10):
+
+    x = df[df['stationcode']==np.unique(stationcode)[j]].iloc[:,0]    
+    Y = df[df['stationcode']==np.unique(stationcode)[j]].iloc[:,range(1,13)].T   
+    figstr = 'seasonal-cycle_' + np.unique(stationcode)[j] + '.png'
+    titlestr = 'Seasonal cycle: ' + np.unique(stationcode)[j]
+
+    fig, ax = plt.subplots(figsize=(15,10))      
+    plt.plot(np.arange(1,13),Y)
+    plt.title(titlestr, fontsize=fontsize)
+    plt.savefig(figstr)
+    plt.close(fig)
+        
+#------------------------------------------------------------------------------
 # I/O: GloSAT.prelim01_reqSD_alternativegrid-178101-201912.nc
 #------------------------------------------------------------------------------
 
@@ -202,7 +285,7 @@ fontsize = 12
 monthstr = ['Jan', 'Feb', 'Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
 
 #for i in range(len(ds_monthly_climatology['month'])):
-for i in range(200,len(ds_annual_mean['year'])):
+for i in range(198,len(ds_annual_mean['year'])): # plot 1979-present (ERA5 range)
 
 #    var = np.array(ds_monthly_climatology['temperature_anomaly'])[i,:,:]
     var = np.array(ds_annual_mean['temperature_anomaly'])[i,:,:]
