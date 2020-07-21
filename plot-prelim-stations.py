@@ -128,25 +128,62 @@ def load_dataframe(filename_txt):
                 if (len(line.strip().split())!=13) | (len(line.split()[0])>4):   
                     # when line is stationinfo extract stationid and stationname
                     info = line.strip().split()
+                    country = info[-4]
                     if len(info[0]) == 6:
                         code = info[0]
-                        country = line.strip().split()[-4]
-                        lon = line.strip().split()[1]
-                        lat = line.strip().split()[2]
-                        if (len(lon) < 5) & (lon[1:].isdigit()):
-                            lon = float(lon)
+                        if info[1][1:].isdigit():
+                            lat = int(info[1])                            
+                            if info[2][1:].isdigit():
+                                lon = int(info[2])
+                            else:
+                                split = info[2].split('-')
+                                if split[0].isdigit():
+                                    lon = int(split[0])
+                                else:
+                                    lon = int('-' + split[1])                            
                         else:
-                            lon = np.nan
-                        if (len(lat) < 5) & (lat[1:].isdigit()):
-                            lat = float(lat)
-                        else:
-                            lat = np.nan
+                            split = info[1].split('-')  
+                            if len(split) == 2:
+                                lat = int(split[0])
+                                lon = int('-' + split[1])
+                            elif len(split) > 2:
+                                if split[0].isdigit():                                    
+                                    lat = int(split[0])                                 
+                                    lon = int('-' + split[1])                                                                  
+                                else:
+                                    lat = int('-' + split[1])                                 
+                                    lon = int('-' + split[2])                                 
                     else:
-                        code = np.nan
-                        country = np.nan
+                        code = info[0][0:6]   
+                        split = info[0].split('-')
+                        if len(split) == 2:
+                            lat = int(split[1])
+                            if info[1].isdigit():
+                                lon = int(info[1])                                
+                            else:
+                                split = info[1].split('-')                                
+                                if split[0].isdigit():
+                                    lon = int(split[0])
+                                else:
+                                    lon = int('-' + split[1])                                                            
+                        elif len(split) == 3:
+                            lat = int('-' + split[1])                            
+                            lon = int('-' + split[2])                            
+                        elif len(split) == 4:
+                            lat = int('-' + split[1])                            
+                            lon = int('-' + split[2])                                                        
+                        else:
+                            print(line)
+                            lat = np.nan
+                            lon = np.nan
+                            
+                    if lat == -999: lat = np.nan
+                    if lon == -9999: lon = np.nan
+                            
                 else:           
                     # append monthly anomalies in [K] & station: lat, lon, id, name 
-                    yearlist.append(np.array(line.strip().split()[0]).astype('int'))                                 
+#                    yearlist.append(np.array(line.strip().split()[0]).astype('int'))                                 
+                    yearlist.append(int(line.strip().split()[0]))                                 
                     monthlist.append(np.array(line.strip().split()[1:]).astype('int'))                                 
                     stationinfo.append(info) # store for flagging
                     stationcode.append(code)
@@ -204,19 +241,44 @@ lon_min = df['stationlon'].min()
 lon_max = df['stationlon'].max()
 lat_start = -900
 lat_end = 900
-lon_start = 0
-lon_end = 3600
+lon_start = -1800
+lon_end = 1800
 station_start=0
 station_end=10
 
 
+#df['stationlat'].isnull().sum()
+dlat = df[df['stationlat'].isnull()]
+dlon = df[df['stationlon'].isnull()]
+dcode = df[df['stationcode'].isnull()]
+    
+
+for i in range(len(dlat['stationcode'].unique())):
+    station = list(dlat[dlat['stationcode']==dlat['stationcode'].unique()[i]]['stationinfo'])[0]
+    print(station)
+
+for i in range(len(dlon['stationcode'].unique())):
+    station = list(dlon[dlon['stationcode']==dlon['stationcode'].unique()[i]]['stationinfo'])[0]
+    print(station)
+        
+# dlat and dlon fails: 
+# array(['085997', '685807', '688607', '967811', '999099', '999216'], dtype=object)
+
+#['085997-999-9999', '100', 'SERRO', 'DO', 'PILAR', 'PORTUGAL', '19011930', '101901', '0']
+#['685807-999-9999-9999', 'PIETERMARITZBERG', 'SOUTH', 'AFRICA', '18701886', '101870', '0']
+#['688607-999-9999-9999', 'GRAHAMSTOWN', 'SOUTH', 'AFRICA', '18551870', '101855', '0']
+#['967811-999-9999', '1400', 'TJIBODAS', 'INDONESIA', '19051948', '101905', '0']
+#['999096-341-9999-9999', 'BREAKSEA', 'AUSTRALIA', '18971899', '101897', '0']
+#['999099-999-9999-9999', 'LONDON', 'AUSTRALIA', '18971899', '101897', '0']
+#['999216-999-9999-9999', 'LAS', 'DELICIAS', 'ARGENTINA', '19251964', '101925', '0']
+    
 #------------------------------------------------------------------------------
 # PLOTS
 #------------------------------------------------------------------------------
 
 if plot_temporal_coverage == True:
     
-    # PLOT: histogram of yearly coverage
+    # PLOT: histogram of temporal coverage: to 1900
           
     nbins = year_end - year_start + 1
     bins = np.linspace(year_start, year_end, nbins) 
@@ -227,7 +289,7 @@ if plot_temporal_coverage == True:
     Q3 = pd.Series(bins).iloc[(pd.Series(np.cumsum(counts))-np.sum(counts)*0.75).abs().argsort()[:1]].values[0]
              
     figstr = 'crutem5-histogram-1900.png'
-    titlestr = 'Histogram of temporal coverage for CRUTEM5 (to 1900): N=' + "{0:.0f}".format(np.sum(counts))
+    titlestr = 'Histogram of yearly coverage for CRUTEM5 (to 1900): N=' + "{0:.0f}".format(np.sum(counts))
 
     fig, ax = plt.subplots(figsize=(15,10))          
 #    plt.hist(df[df['year']<1901]['year'], bins=nbins, density=True, facecolor='grey', alpha=0.5, label='KDE')
@@ -245,6 +307,8 @@ if plot_temporal_coverage == True:
     plt.savefig(figstr)
     plt.close(fig)
 
+    # PLOT: histogram of temporal coverage: full record
+
     nbins = year_max - year_start + 1
     bins = np.linspace(year_start, year_max, nbins) 
     counts, edges = np.histogram(df['year'], nbins, range=[year_start,year_max+1], density=False)    
@@ -253,7 +317,7 @@ if plot_temporal_coverage == True:
     Q3 = pd.Series(bins).iloc[(pd.Series(np.cumsum(counts))-np.sum(counts)*0.75).abs().argsort()[:1]].values[0]
              
     figstr = 'crutem5-histogram-full.png'
-    titlestr = 'Histogram of temporal coverage for CRUTEM5 (full): N=' + "{0:.0f}".format(np.sum(counts)) 
+    titlestr = 'Histogram of yearly coverage for CRUTEM5 (full): N=' + "{0:.0f}".format(np.sum(counts)) 
 
     fig, ax = plt.subplots(figsize=(15,10))          
     plt.fill_between(bins, counts, step="post", facecolor='lightgrey', alpha=0.5)
@@ -271,7 +335,7 @@ if plot_temporal_coverage == True:
 
 if plot_spatial_coverage == True:
     
-    # PLOT: histogram of latitudinal coverage: NB: scale is lat[-900,900] and lon[0,3600]
+    # PLOT: histogram of latitudinal coverage: NB: scale is lat[-900,900]
 
     nbins = int((lat_end - lat_start)/10) + 1
     bins = np.linspace(lat_start, lat_end, nbins) 
@@ -280,7 +344,7 @@ if plot_spatial_coverage == True:
     Q2 = pd.Series(bins).iloc[(pd.Series(np.cumsum(counts))-np.sum(counts)*0.50).abs().argsort()[:1]].values[0]
     Q3 = pd.Series(bins).iloc[(pd.Series(np.cumsum(counts))-np.sum(counts)*0.75).abs().argsort()[:1]].values[0]
 
-    figstr = 'crutem5-histogram-latlon-full.png'
+    figstr = 'crutem5-histogram-lat-full.png'
     titlestr = 'Histogram of latitudinal coverage: CRUTEM5 (full)'
 
     fig, ax = plt.subplots(figsize=(15,10))          
@@ -307,7 +371,7 @@ if plot_spatial_coverage == True:
     Q3 = pd.Series(bins).iloc[(pd.Series(np.cumsum(counts))-np.sum(counts)*0.75).abs().argsort()[:1]].values[0]
 
     figstr = 'crutem5-histogram-lon-full.png'
-    titlestr = 'Histogram of longitudinal spatial coverage: CRUTEM5 (full)'
+    titlestr = 'Histogram of longitudinal coverage: CRUTEM5 (full)'
 
     fig, ax = plt.subplots(figsize=(15,10))          
     plt.fill_between(bins/10, counts, step="post", facecolor='lightgrey', alpha=0.5)
@@ -392,8 +456,8 @@ if plot_locations == True:
     
     # PLOT: quick plot of stations on world map
 
-    x = -df['stationlon']/10
-    y = df['stationlat']/10
+    lon = -df['stationlon']/10
+    lat = df['stationlat']/10
     
     figstr = 'location_map.png'
     titlestr = 'Station locations'
@@ -417,8 +481,8 @@ if plot_locations == True:
     gl.xlocator = mticker.FixedLocator([-180,-120,-60,0,60,120,180])
     gl.ylocator = mticker.FixedLocator([-90,-60,-30,0,30,60,90])
     gl.xformatter = LONGITUDE_FORMATTER
-    gl.yformatter = LATITUDE_FORMATTER    
-    plt.scatter(x=x, y=y, 
+    gl.yformatter = LATITUDE_FORMATTER        
+    plt.scatter(x=lon, y=lat, 
                 color="dodgerblue", s=1, alpha=0.5,
                 transform=ccrs.PlateCarree()) 
     plt.title(titlestr, fontsize=fontsize)
