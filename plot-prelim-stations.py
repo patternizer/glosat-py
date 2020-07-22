@@ -209,7 +209,6 @@ def load_dataframe(filename_txt):
     df['stationlat'] = stationlat
     df['stationlon'] = stationlon
                 
-    df.to_csv('df.csv')
     return df
 
 #------------------------------------------------------------------------------
@@ -246,6 +245,8 @@ lon_min = df['stationlon'].min()
 lon_max = df['stationlon'].max()
 year_min = df['year'].min()
 year_max = df['year'].max()
+
+df.to_csv('df.csv')
 
 #------------------------------------------------------------------------------
 # BAD DATA ANALYSIS
