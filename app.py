@@ -17,7 +17,6 @@ import numpy as np
 import numpy.ma as ma
 from mod import Mod
 import pandas as pd
-import xarray as xr
 # Plotting libraries:
 import matplotlib
 import matplotlib.pyplot as plt; plt.close('all')
@@ -35,16 +34,7 @@ from matplotlib.collections import PolyCollection
 from mpl_toolkits import mplot3d
 from mpl_toolkits.mplot3d import Axes3D
 from mpl_toolkits.mplot3d import proj3d
-#import seaborn as sns
 import cmocean
-# Mapping libraries:
-import cartopy
-import cartopy.crs as ccrs
-from cartopy.io import shapereader
-import cartopy.feature as cf
-from cartopy.util import add_cyclic_point
-from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
-from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
 # Plotly libraries
 import plotly.express as px
 import plotly.graph_objects as go
