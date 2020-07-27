@@ -4,8 +4,8 @@
 #------------------------------------------------------------------------------
 # PROGRAM: plot-prelim-stations.py
 #------------------------------------------------------------------------------
-# Version 0.4
-# 21 July, 2020
+# Version 0.5
+# 24 July, 2020
 # Michael Taylor
 # https://patternizer.github.io
 # patternizer AT gmail DOT com
@@ -16,9 +16,8 @@
 #------------------------------------------------------------------------------
 import numpy as np
 import numpy.ma as ma
+from mod import Mod
 import pandas as pd
-import xarray as xr
-from io import StringIO
 # Plotting libraries:
 import matplotlib
 import matplotlib.pyplot as plt; plt.close('all')
@@ -34,7 +33,7 @@ from matplotlib.collections import PolyCollection
 from mpl_toolkits import mplot3d
 from mpl_toolkits.mplot3d import Axes3D
 from mpl_toolkits.mplot3d import proj3d
-import seaborn as sns
+import cmocean
 # Mapping libraries:
 import cartopy
 import cartopy.crs as ccrs
@@ -59,7 +58,7 @@ lat_start = -90;  lat_end = 90
 lon_start = -180; lon_end = 180
 station_start=0;  station_end=10
 
-load_df = True
+load_df = False
 plot_temporal_coverage = True
 plot_spatial_coverage = True
 plot_station_timeseres = True
@@ -71,35 +70,6 @@ plot_delta_cc = True
 # METHODS
 #------------------------------------------------------------------------------
 
-def calc_median(counts,bins):
-    """
-    # -------------------------------
-    # CALCULATE MEDIUM FROM HISTOGRAM
-    # -------------------------------
-    # M_estimated ~ L_m + [ ( N/2 - F_{m-1} ) /  f_m]  * c
-    #
-    # where,
-    #
-    # L_m =lower limit of the median bar
-    # N = is the total number of observations
-    # F_{m-1} = cumulative frequency (total number of observations) in all bars below the median bar
-    # f_m = frequency of the median bar
-    # c = median bar width
-    """
-    M = 0
-    counts_cumsum = counts.cumsum()
-    counts_half = counts_cumsum[-1]/2.0    
-    for i in np.arange(0,bins.shape[0]-1):
-        counts_l = counts_cumsum[i]
-        counts_r = counts_cumsum[i+1]
-        if (counts_half >= counts_l) & (counts_half < counts_r):
-            c = bins[1]-bins[0]
-            L_m = bins[i+1]
-            F_m_minus_1 = counts_cumsum[i]
-            f_m = counts[i+1]
-            M = L_m + ( (counts_half - F_m_minus_1) / f_m ) * c            
-    return M
-
 def load_dataframe(filename_txt):
     
     #------------------------------------------------------------------------------
@@ -107,92 +77,82 @@ def load_dataframe(filename_txt):
     #------------------------------------------------------------------------------
 
     # load .txt file (comma separated) into pandas dataframe
-
-    # filename_txt = 'stat4.CRUTEM5.1prelim01.1721-2019.txt'
-    # GOOD DATA:
-    # station header:    
-    # [06True7250 464  -78 1538 BLATTEN, LOETSCHENTA SWITZERLAND   20012012  982001    9999]
-    # station data:
-    # [1921  -44  -71  -68  -46  -12   17   42   53   27  -20  -21  -40]
-    # BAD DATA EXAMPLES:
-    # ['939470-525-1691', '15', 'CAMPBELL', 'ISLAND', 'NEW', 'ZEALAND', '19412019', '411941', '0']
-    # ['939870-440', '1766', '44', 'CHATHAM', 'I', 'WAITANGI', 'NEW', 'ZEALAND', '18782012', '411878', '93987']
-    # ['999096-341-9999-9999', 'BREAKSEA', 'AUSTRALIA', '18971899', '101897', '0']
-
+    
+    filename_txt = 'stat4.CRUTEM5.1prelim01.1721-2019.txt'
+    
     yearlist = []
     monthlist = []
-    stationinfo = []
+    stationheader = []
+
     stationcode = []
-    stationcountry = []
     stationlat = []
     stationlon = []
+    stationelevation = []
+    stationname = []
+    stationcountry = []
+    stationfirstyear = []
+    stationlastyear = []
+    stationsource = []
+    stationfirstreliable = []
+    stationfirstreliable = []
+    stationcruindex = []
+    stationgridcell = []
+
     with open (filename_txt, 'r', encoding="ISO-8859-1") as f:  
                     
         for line in f:   
             if len(line)>1: # ignore empty lines         
                 if (len(line.strip().split())!=13) | (len(line.split()[0])>4):   
-                    # when line is stationinfo extract stationid and stationname
-                    info = line.strip().split()
-                    country = info[-4]
-                    if len(info[0]) == 6:
-                        code = info[0]
-                        if info[1][1:].isdigit():
-                            lat = int(info[1])                            
-                            if info[2][1:].isdigit():
-                                lon = int(info[2])
-                            else:
-                                split = info[2].split('-')
-                                if split[0].isdigit():
-                                    lon = int(split[0])
-                                else:
-                                    lon = int('-' + split[1])                            
-                        else:
-                            split = info[1].split('-')  
-                            if len(split) == 2:
-                                lat = int(split[0])
-                                lon = int('-' + split[1])
-                            elif len(split) > 2:
-                                if split[0].isdigit():                                    
-                                    lat = int(split[0])                                 
-                                    lon = int('-' + split[1])                                                                  
-                                else:
-                                    lat = int('-' + split[1])                                 
-                                    lon = int('-' + split[2])                                 
-                    else:
-                        code = info[0][0:6]   
-                        split = info[0].split('-')
-                        if len(split) == 2:
-                            lat = int(split[1])
-                            if info[1].isdigit():
-                                lon = int(info[1])                                
-                            else:
-                                split = info[1].split('-')                                
-                                if split[0].isdigit():
-                                    lon = int(split[0])
-                                else:
-                                    lon = int('-' + split[1])                                                            
-                        elif len(split) == 3:
-                            lat = int('-' + split[1])                            
-                            lon = int('-' + split[2])                            
-                        elif len(split) == 4:
-                            lat = int('-' + split[1])                            
-                            lon = int('-' + split[2])                                                        
-                        else:
-                            print(line)
-                            lat = np.nan
-                            lon = np.nan
-                            
-                    if lat == -999: lat = np.nan
-                    if lon == -9999: lon = np.nan
+                    
+                    # when line is station header extract info
+                    #
+                    # Station Header File:
+                    #
+                    #    (ch. 1-7) World Meteorological Organization (WMO) Station Number with a single additional character making a field of 6 integers. WMO numbers comprise a 5 digit sub-field, where the first two digits are the country code and the next three digits designated by the National Meteorological Service (NMS). Some country codes are not used. If the additional sixth digit is a zero, then the WMO number is or was an official WMO number. If the sixth digit is not zero then the station does not have an official WMO number and an alternative number has been assigned by CRU. Two examples are given below. Many additional stations are grouped beginning 99****. Station numbers in the blocks 72**** to 75**** are additional stations in the United States.
+                    #    (ch. 8-11) Station latitude in degrees and tenths (-999 is missing), with negative values in the Southern Hemisphere
+                    #    (ch. 12-16) Station longitude in degrees and tenths (-1999 is missing), with negative values in the Eastern Hemisphere (NB this is opposite to the more usual convention)
+                    #    (ch. 18-21) Station Elevation in metres (-999 is missing)
+                    #    (ch. 23-42) Station Name
+                    #    (ch. 44-56) Country
+                    #    (ch. 58-61) First year of monthly temperature data
+                    #    (ch. 62-65) Last year of monthly temperature data
+                    #    (ch. 68-69) Data Source (see below)
+                    #    (ch. 70-73) First reliable year (generally the same as the first year)
+                    #    (ch. 75-78) Unique index number (internal use)
+                    #    (ch. 80-83) Index into the 5° x 5° gridcells (internal use) 
+                        
+                    code = line[0:6]                    
+                    lat = line[6:10]
+                    lon = line[10:15]
+                    elevation = line[17:20]
+                    name = line[21:41]
+                    country = line[42:55]
+                    firstyear = line[56:60]
+                    lastyear = line[60:64]
+                    source = line[64:68]
+                    firstreliable = line[68:72]
+                    cruindex = line[72:77]
+                    gridcell = line[77:80]    
+                    
+                    header = line
                             
                 else:           
                     yearlist.append(int(line.strip().split()[0]))                                 
                     monthlist.append(np.array(line.strip().split()[1:]).astype('int'))                                 
-                    stationinfo.append(info) # store for flagging
+                    stationheader.append(header)
+
                     stationcode.append(code)
-                    stationcountry.append(country)
                     stationlat.append(lat)
                     stationlon.append(lon)
+                    stationelevation.append(elevation)
+                    stationname.append(name)
+                    stationcountry.append(country)
+                    stationfirstyear.append(firstyear)
+                    stationlastyear.append(lastyear)
+                    stationsource.append(source)
+                    stationfirstreliable.append(firstreliable)
+                    stationcruindex.append(cruindex)
+                    stationgridcell.append(gridcell)
             else:
                 continue
     f.close
@@ -200,15 +160,60 @@ def load_dataframe(filename_txt):
     # construct dataframe
     df = pd.DataFrame(columns=['year','1','2','3','4','5','6','7','8','9','10','11','12'])
     df['year'] = yearlist
-    for j in range(1,12+1):
+    for j in range(1,13):
         df[df.columns[j]] = [ monthlist[i][j-1] for i in range(len(monthlist)) ]
-    df.replace(fillval, np.nan, inplace=True) 
-    df['stationinfo'] = stationinfo
-    df['stationcode'] = stationcode
-    df['stationcountry'] = stationcountry
+    df['stationcode'] = stationcode    
     df['stationlat'] = stationlat
     df['stationlon'] = stationlon
-                
+    df['stationelevation'] = stationelevation
+    df['stationname'] = stationname
+    df['stationcountry'] = stationcountry
+    df['stationfirstyear'] = stationfirstyear
+    df['stationlastyear'] = stationlastyear
+    df['stationsource'] = stationsource
+    df['stationfirstreliable'] = stationfirstreliable
+    df['stationcruindex'] = stationcruindex
+    df['stationgridcell'] = stationgridcell
+
+    df['stationlat'] = df['stationlat'].astype('int')
+    df['stationlon'] = df['stationlon'].astype('int')
+    df['stationelevation'] = df['stationelevation'].astype('int')
+    df['stationfirstyear'] = df['stationfirstyear'].astype('int')
+    df['stationlastyear'] = df['stationlastyear'].astype('int')    
+    df['stationsource'] = df['stationsource'].astype('int')    
+    df['stationfirstreliable'] = df['stationfirstreliable'].astype('int')
+
+    # bad data handling
+
+    df['stationheader'] = stationheader          
+    nchar = [ len(df['stationheader'][i]) for i in range(len(df)) ]      
+    nwords = [ len(df['stationheader'][i].split()) for i in range(len(df)) ]      
+
+#    df['stationcruindex'] = df['stationcruindex'].astype('int')
+#    df['stationgridcell'] = df['stationgridcell'].astype('int') 
+
+#    for i in range(len(df)):        
+#        if str(df['stationcruindex'][i]).strip()[1:].isdigit():
+#            continue
+#        else:
+#            df['stationcruindex'][i] = np.nan
+#    [ df['stationlat'].replace(df['stationlat'][i], np.nan, inplace=True) for i in range(len(df)) if not df['stationlat'][i].strip()[1:].isdigit() ]
+ 
+    # replace fillvalues
+
+    df['year'].replace(-999, np.nan, inplace=True) 
+    for j in range(1,13):
+        df[df.columns[j]].replace(-999, np.nan, inplace=True)
+    df['stationlat'].replace(-999, np.nan, inplace=True) 
+    df['stationlon'].replace(-9999, np.nan, inplace=True) 
+    df['stationelevation'].replace(-999, np.nan, inplace=True) 
+    df['stationfirstyear'].replace(-999, np.nan, inplace=True) 
+    df['stationlastyear'].replace(-999, np.nan, inplace=True) 
+    df['stationsource'].replace(-999, np.nan, inplace=True) 
+    df['stationfirstreliable'].replace(-999, np.nan, inplace=True) 
+
+
+    df.to_csv('df.csv')
     return df
 
 #------------------------------------------------------------------------------
@@ -234,10 +239,10 @@ else:
 #------------------------------------------------------------------------------
 
 df = pd.read_csv('df.csv', index_col=0)
-df['stationlat'] = df['stationlat']/10
-df['stationlon'] = df['stationlon']/10
+df['stationlat'] = df['stationlat']/10.0
+df['stationlon'] = df['stationlon']/10.0
 for j in range(1,12+1):
-    df[df.columns[j]] = df[df.columns[j]]/100
+    df[df.columns[j]] = df[df.columns[j]]/100.0
 
 lat_min = df['stationlat'].min()
 lat_max = df['stationlat'].max()
@@ -366,7 +371,6 @@ if plot_temporal_coverage == True:
     nbins = 1900 - year_min + 1
     bins = np.linspace(year_min, 1900, nbins) 
     counts, edges = np.histogram(df[df['year']<1901]['year'], nbins, range=[year_min,1900+1], density=False)    
-#    M = calc_median(counts,bins)    
     Q1 = pd.Series(bins).iloc[(pd.Series(np.cumsum(counts))-np.sum(counts)*0.25).abs().argsort()[:1]].values[0]
     Q2 = pd.Series(bins).iloc[(pd.Series(np.cumsum(counts))-np.sum(counts)*0.50).abs().argsort()[:1]].values[0]
     Q3 = pd.Series(bins).iloc[(pd.Series(np.cumsum(counts))-np.sum(counts)*0.75).abs().argsort()[:1]].values[0]
@@ -378,7 +382,6 @@ if plot_temporal_coverage == True:
 #    plt.hist(df[df['year']<1901]['year'], bins=nbins, density=True, facecolor='grey', alpha=0.5, label='KDE')
     plt.fill_between(bins, counts, step="post", facecolor='lightgrey', alpha=0.5)
     plt.plot(bins, counts, drawstyle='steps-post', linewidth=2, color='black')    
-#    plt.axvline(x=M, color='r')    
     plt.axvline(x=Q1, color='blue', label='Q1: ' + "{0:.0f}".format(Q1))   
     plt.axvline(x=Q2, color='red', label='Q2: ' + "{0:.0f}".format(Q2))    
     plt.axvline(x=Q3, color='blue', label='Q3: ' + "{0:.0f}".format(Q3))    
@@ -418,7 +421,7 @@ if plot_temporal_coverage == True:
 
 if plot_spatial_coverage == True:
     
-    # PLOT: histogram of latitudinal coverage: NB: scale is lat[-900,900]
+    # PLOT: histogram of latitudinal coverage
 
     nbins = lat_end - lat_start + 1
     bins = np.linspace(lat_start, lat_end, nbins) 
@@ -444,7 +447,7 @@ if plot_spatial_coverage == True:
     plt.savefig(figstr)
     plt.close(fig)
 
-    # PLOT: histogram of longitudinal coverage: NB: scale is lon[0,3600]
+    # PLOT: histogram of longitudinal coverage
 
     nbins = lon_end - lon_start + 1
     bins = np.linspace(lon_start, lon_end, nbins) 
@@ -480,33 +483,43 @@ if plot_station_timeseres == True:
         # form station timeseries
         da = df[df['stationcode']==df['stationcode'].unique()[j]].iloc[:,range(0,13)]
     #   da_melt = da.melt(id_vars='year').sort_values(by=['year']).reset_index()
-        ts = []
-        for i in range(len(da)):
+
+        ts = []    
+        for i in range(len(da)):            
             monthly = da.iloc[i,1:]
-            ts = ts + monthly.to_list()
-        ts = np.array(ts)            
-        t = pd.date_range(start=str(da['year'].iloc[0]), periods=len(ts), freq='M')    
-        ts_yearly = da.groupby(da['year']).mean().values
-        t_yearly = pd.date_range(start=str(da['year'].iloc[0]), periods=len(ts_yearly), freq='Y')    
-        
-    #    db = pd.DataFrame(columns=da.columns)
-    #    db['year'] = [ i for i in range(da_melt['year'].iloc[0], da_melt['year'].iloc[-1]+1)]
-    #    db_melt = db.melt(id_vars='year').sort_values(by=['year']).reset_index()
-    #    del db_melt['index']
-    #    db_melt.rename(columns={'year':'Year','variable':'Month','value':'Value'}, inplace = True)
-    #    db_melt['Day'] = 15
-    #    db_melt['Date'] = pd.to_datetime(db_melt[['Year','Month','Day']], format='%Y%m')      
+            ts = ts + monthly.to_list()    
+        ts = np.array(ts)                
+        ts_yearly = []    
+        ts_yearly_sd = []    
+        for i in range(len(da)):            
+            yearly = np.nanmean(da.iloc[i,1:])
+            yearly_sd = np.nanstd(da.iloc[i,1:])
+            ts_yearly.append(yearly)    
+            ts_yearly_sd.append(yearly_sd)    
+        ts_yearly_sd = np.array(ts_yearly_sd)                    
+        t = pd.date_range(start=str(da['year'].iloc[0]), periods=len(ts), freq='M')     
+        t_yearly = pd.date_range(start=str(da['year'].iloc[0]), periods=len(ts_yearly), freq='A')   
+           
+        n = len(t_yearly)            
+        colors = cmocean.cm.balance(np.linspace(0.05,0.95,n)) 
+        hexcolors = [ "#{:02x}{:02x}{:02x}".format(int(colors[i][0]*255),int(colors[i][1]*255),int(colors[i][2]*255)) for i in range(len(colors)) ]
     
         figstr = 'timeseries_' + str(int(df['stationcode'].unique()[j])) + '.png'
         titlestr = 'Monthly temperature anomaly timeseries: stationcode=' + str(int(df['stationcode'].unique()[j]))
               
         fig, ax = plt.subplots(figsize=(15,10))      
-        plt.plot(t,ts, color='lightgrey')
-#        plt.plot(ts_yearly, color='red')        
+#        plt.plot(t,ts, color='lightgrey', label='Monthly')
+        plt.errorbar(t_yearly, ts_yearly, yerr=ts_yearly_sd, xerr=None, fmt='None', ecolor=hexcolors, label='Yearly mean ± 1 s.d.')                                   
+        for k in range(n):     
+            if k==n-1:
+                plt.scatter(t_yearly[k],ts_yearly[k], color=hexcolors[k], label='Yearly mean')
+            else:
+                plt.scatter(t_yearly[k],ts_yearly[k], color=hexcolors[k], label=None)
+        plt.clim([min(ts_yearly),max(ts_yearly)])
         plt.tick_params(labelsize=fontsize)
-#        plt.legend(loc='best', fontsize=fontsize)
+        plt.legend(loc=2, ncol=1, fontsize=fontsize)
         plt.xlabel("Year", fontsize=fontsize)
-        plt.ylabel("Monthly temperature anomaly, $\mathrm{\degree}C$", fontsize=fontsize)
+        plt.ylabel("Temperature anomaly, $\mathrm{\degree}C$", fontsize=fontsize)
         plt.title(titlestr, fontsize=fontsize)
         plt.savefig(figstr)
         plt.close(fig)
@@ -518,22 +531,93 @@ if plot_monthly_climatology == True:
     #for j in range(len(np.unique(stationcode))):        
     for j in range(station_start,station_end):
     
-        x = df[df['stationcode']==df['stationcode'].unique()[j]].iloc[:,0]    
+        X = df[df['stationcode']==df['stationcode'].unique()[j]].iloc[:,0]    
         Y = df[df['stationcode']==df['stationcode'].unique()[j]].iloc[:,range(1,13)].T   
+        n = len(Y.T)            
+        colors = cmocean.cm.balance(np.linspace(0.05,0.95,n)) 
+        hexcolors = [ "#{:02x}{:02x}{:02x}".format(int(colors[i][0]*255),int(colors[i][1]*255),int(colors[i][2]*255)) for i in range(len(colors)) ]
         
         figstr = 'seasonal-cycle_' + str(int(df['stationcode'].unique()[j])) + '.png'
         titlestr = 'Monthly temperature anomaly seasonal cycle: stationcode=' + str(int(df['stationcode'].unique()[j]))
-    
+
         fig, ax = plt.subplots(figsize=(15,10))      
-        plt.plot(np.arange(1,13),Y.iloc[:,0:len(Y.T)], color='lightgrey', label=None)
-        plt.plot(np.arange(1,13),Y.iloc[:,-1], color='red', label=str(x.iloc[-1]))
-        plt.legend(loc='best', fontsize=fontsize)
+        for k in range(n):     
+            if k==0:
+                plt.plot(np.arange(1,13),Y.iloc[:,k], linewidth=3, color=hexcolors[k], label=str(X.iloc[k]))
+            elif k==n-1:
+                plt.plot(np.arange(1,13),Y.iloc[:,k], linewidth=3, color=hexcolors[k], label=str(X.iloc[k]))
+            else:
+                plt.plot(np.arange(1,13),Y.iloc[:,k], linewidth=0.5, color=hexcolors[k], label=None)                
+        plt.legend(loc=2, ncol=1, fontsize=fontsize)
         plt.tick_params(labelsize=fontsize)   
         plt.xlabel("Month", fontsize=fontsize)
         plt.ylabel("Monthly temperature anomaly, $\mathrm{\degree}C$", fontsize=fontsize)        
         plt.title(titlestr, fontsize=fontsize)
         plt.savefig(figstr)
         plt.close(fig)
+
+        # ----------------------------------------
+        # Beautify with Zach Labe's dataviz format
+        # ----------------------------------------
+
+#        plt.rc('savefig', facecolor='black')
+#        plt.rc('axes', edgecolor='darkgrey')
+#        plt.rc('xtick', color='darkgrey')
+#        plt.rc('ytick', color='darkgrey')
+#        plt.rc('axes', labelcolor='darkgrey')
+#        plt.rc('axes', facecolor='black')
+#        plt.rc('text',usetex=False)
+#        plt.rc('font',**{'family':'sans-serif','sans-serif':['DejaVu Sans']}) 
+#
+#        fig, ax = plt.subplots(figsize=(15,10))      
+#
+#        def adjust_spines(ax, spines):
+#            for loc, spine in ax.spines.items():
+#                if loc in spines:
+#                    spine.set_position(('outward', 5))
+#                else:
+#                    spine.set_color('none')  
+#            if 'left' in spines:
+#                ax.yaxis.set_ticks_position('left')
+#            else:
+#                ax.yaxis.set_ticks([])
+#            if 'bottom' in spines:
+#                ax.xaxis.set_ticks_position('bottom')
+#            else:
+#                ax.xaxis.set_ticks([])
+#        ax.tick_params('both',length=5.5,width=2,which='major')             
+#        adjust_spines(ax, ['left','bottom'])            
+#        ax.spines['top'].set_color('none')
+#        ax.spines['right'].set_color('none')
+#        ax.spines['left'].set_linewidth(2)
+#        ax.spines['bottom'].set_linewidth(2)
+#    
+#        n = len(Y.T)
+#        color=iter(cmocean.cm.balance(np.linspace(0.05,0.95,n)))
+#        for i in range(n):
+#            if i == n-1:
+#                c = 'gold'
+#                l = 3
+#                plt.plot(np.arange(1,13),Y.iloc[:,i],c=c,zorder=3,linewidth=l,label='Year '+"{0:.0f}".format(X.iloc[i]))
+#            else:
+#                c=next(color)
+#                l = 1.5
+#                plt.plot(np.arange(1,13),Y.iloc[:,i],c=c,zorder=1,linewidth=l,alpha=1)       
+#            if (Mod(i,10) == 0)|(i==n-1):
+#                plt.text(12.5, Y.iloc[-1,i], "{0:.0f}".format(X.iloc[i]), color=c,fontsize=9,ha='center',va='center')          
+#        plt.ylabel("Monthly temperature anomaly, $\mathrm{\degree}C$",fontsize=16, color='darkgrey') 
+#        xlabels = list(['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'])
+#        plt.xticks(np.arange(1,13,1),xlabels,rotation=0,fontsize=9)
+#        plt.xlim([1,13])       
+#        plt.yticks(np.arange(0,int(np.nanmax(Y)+2),3),map(str,np.arange(0,int(np.nanmax(Y)+2),3)),fontsize=10)
+#        plt.ylim([np.nanmin(Y.T),np.nanmax(Y.T)])
+#        plt.subplots_adjust(bottom=0.15)  
+#        plt.text(0.,-2.0,"DATA: CRUTEM v5.1 (Osborn et al, 2020)", fontsize=5,rotation='horizontal',ha='left',color='darkgrey')
+#        plt.text(0.,-1.9,"SOURCE: UEA CRU", fontsize=5,rotation='horizontal',ha='left',color='darkgrey')
+#        plt.text(0.,-1.8,"GRAPHIC: Michael Taylor (@MichaelTaylorEO)", fontsize=5,rotation='horizontal',ha='left',color='darkgrey')
+#        plt.title(titlestr,fontsize=25,color='w') 
+#        plt.savefig(figstr)
+#        plt.close(fig)
 
 if plot_locations == True:
     
@@ -550,8 +634,8 @@ if plot_locations == True:
     ax = plt.axes(projection=p)
     ax.set_global()
 #    ax.stock_img()
-    ax.add_feature(cf.COASTLINE, edgecolor="tomato")
-    ax.add_feature(cf.BORDERS, edgecolor="tomato")
+    ax.add_feature(cf.COASTLINE, edgecolor="lightblue")
+    ax.add_feature(cf.BORDERS, edgecolor="lightblue")
 #    ax.coastlines()
 #    ax.gridlines()    
         
@@ -566,7 +650,7 @@ if plot_locations == True:
     gl.xformatter = LONGITUDE_FORMATTER
     gl.yformatter = LATITUDE_FORMATTER        
     plt.scatter(x=lon, y=lat, 
-                color="dodgerblue", s=1, alpha=0.5,
+                color="maroon", s=1, alpha=0.5,
                 transform=ccrs.PlateCarree()) 
     plt.title(titlestr, fontsize=fontsize)
     plt.savefig(figstr)
@@ -574,3 +658,4 @@ if plot_locations == True:
         
 #------------------------------------------------------------------------------
 print('** END')
+
