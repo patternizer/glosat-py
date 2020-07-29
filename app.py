@@ -3,8 +3,8 @@
 #------------------------------------------------------------------------------
 # PROGRAM: app.py
 #------------------------------------------------------------------------------
-# Version 0.3
-# 23 July, 2020
+# Version 0.4
+# 29 July, 2020
 # Michael Taylor
 # https://patternizer.github.io
 # patternizer AT gmail DOT com
@@ -62,7 +62,7 @@ warnings.filterwarnings("ignore", category=UserWarning)
 fontsize = 12
 
 df = pd.read_csv('df.csv', index_col=0)
-stationlon = -df['stationlon']
+stationlon = df['stationlon']
 stationlat = df['stationlat']
 stationcode = df['stationcode'].unique()
 
@@ -109,7 +109,7 @@ app.layout = html.Div(children=[
                 html.Br(),
 #                html.Label(['Dataset: ', html.A('CRUTEM5.1 v=prelim01', href='https://catalogue.ceda.ac.uk/uuid/eeabb5e1ff2140f48e76ea1ffda6bb48'), ' by ', html.A('UEA-CRU, UEA-NCAS, MO-HC', href='https://crudata.uea.ac.uk/cru/data/temperature/')]),            
 #                html.Label(['Dataviz: ', html.A('Github', href='https://github.com/patternizer/glosat-py'), ' by ', html.A('patternizer', href='https://patternizer.github.io')]),            
-                html.Label(['Dataset: ', html.A('CRUTEM5.1 v=prelim01 ', href='https://catalogue.ceda.ac.uk/uuid/eeabb5e1ff2140f48e76ea1ffda6bb48')]),
+                html.Label(['Dataset: ', html.A('CRUTEM5.1 prelim01 ', href='https://catalogue.ceda.ac.uk/uuid/eeabb5e1ff2140f48e76ea1ffda6bb48')]),
                 html.Br(),
                 html.Label(['Dataviz: ', html.A('Github', href='https://github.com/patternizer/glosat-py')]),            
             ],
@@ -164,16 +164,23 @@ def update_station_info(value):
     """
 
     code = df[df['stationcode']==stationcode[value]]['stationcode'].iloc[0]
-    station = df[df['stationcode']==stationcode[value]]['stationinfo'].iloc[0]
+    lat = df[df['stationcode']==stationcode[value]]['stationlat'].iloc[0]
+    lon = df[df['stationcode']==stationcode[value]]['stationlon'].iloc[0]
+    station = df[df['stationcode']==stationcode[value]]['stationname'].iloc[0]
+    country = df[df['stationcode']==stationcode[value]]['stationcountry'].iloc[0]
                                   
     data = [
         go.Table(
-            header=dict(values=['Station','Value'],
+            header=dict(values=['Lat','Lon','Station','Country'],
                 line_color='darkslategray',
                 fill_color='lightgrey',
                 align='left'),
-            cells=dict(values=[[str(code)], # 1st column
-                [str(station)]], # 2nd column
+            cells=dict(values=[
+                    [str(lat)], 
+                    [str(lon)],
+                    [name], 
+                    [country], 
+                ],
                 line_color='darkslategray',
                 fill_color='white',
                 align='left')
@@ -203,8 +210,8 @@ def update_plot_timeseries(value):
     ts_yearly = []    
     ts_yearly_sd = []    
     for i in range(len(da)):            
-        yearly = np.nanmean(da.iloc[i,1:])
-        yearly_sd = np.nanstd(da.iloc[i,1:])
+        yearly = np.nanmean(da.iloc[i,1:13])
+        yearly_sd = np.nanstd(da.iloc[i,1:13])
         ts_yearly.append(yearly)    
         ts_yearly_sd.append(yearly_sd)    
     ts_yearly_sd = np.array(ts_yearly_sd)                    
@@ -305,9 +312,9 @@ def update_plot_worldmap(value):
     cmap = hexcolors
 
     lat = [df[df['stationcode']==stationcode[value]]['stationlat'].iloc[0]]
-    lon = [-df[df['stationcode']==stationcode[value]]['stationlon'].iloc[0]]
+    lon = [df[df['stationcode']==stationcode[value]]['stationlon'].iloc[0]]
     var = []
-    station = df[df['stationcode']==stationcode[value]]['stationinfo'].iloc[0]
+    station = df[df['stationcode']==stationcode[value]]['stationcode'].iloc[0]
     data = df[df['stationcode']==stationcode[value]].iloc[0]
     
 #    fig = go.Figure(go.Densitymapbox(lat=lat, lon=lon, z=var, radius=10))
