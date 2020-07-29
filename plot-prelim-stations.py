@@ -42,6 +42,14 @@ import cartopy.feature as cf
 from cartopy.util import add_cyclic_point
 from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
 from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
+# OS libraries:
+import os
+import os.path
+from pathlib import Path
+import sys
+import subprocess
+from subprocess import Popen
+import time
 
 # Silence library version notifications
 import warnings
@@ -58,7 +66,7 @@ lat_start = -90;  lat_end = 90
 lon_start = -180; lon_end = 180
 station_start=0;  station_end=10
 
-load_df = False
+load_df = True
 plot_temporal_coverage = True
 plot_spatial_coverage = True
 plot_station_timeseres = True
@@ -236,6 +244,21 @@ def load_dataframe(filename_txt):
 
 if load_df == True:
 
+    #------------------------------------------------------------------------------
+    # EXTRACT TARBALL IF df.csv IS COMPRESSED:
+    #------------------------------------------------------------------------------
+
+    filename = Path("df.csv")
+    if not filename.is_file():
+        print('Uncompressing df.csv from tarball ...')
+        #tar -xzvf df.tar.gz
+        #tar -xjvf df.tar.bz2
+        #filename = "df.tar.gz"
+        #subprocess.Popen(['tar', '-xzvf', filename])
+        filename = "df.tar.bz2"
+        subprocess.Popen(['tar', '-xjvf', filename])
+        time.sleep(5) # pause 5 seconds to give tar extract time to complete prior to attempting pandas read_csv
+
     df = pd.read_csv('df.csv', index_col=0)
 
 else:    
@@ -257,8 +280,15 @@ else:
     df['stationlon'] = df['stationlon']/10.0
     for j in range(1,12+1):
         df[df.columns[j]] = df[df.columns[j]]/100.0
-    # Convert +W to +E
+
+    #------------------------------------------------------------------------------
+    # CONVERT LONGITUDE FROM +W TO +E
+    #------------------------------------------------------------------------------
     df['stationlon'] = -df['stationlon']        
+
+    #------------------------------------------------------------------------------
+    # SAVE DATAFRAME
+    #------------------------------------------------------------------------------
     df.to_csv('df.csv')
 
 #------------------------------------------------------------------------------

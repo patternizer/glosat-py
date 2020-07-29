@@ -46,15 +46,36 @@ import dash_html_components as html
 import dash_bootstrap_components as dbc
 from dash.dependencies import Input, Output, State
 from flask import Flask
-import os
 import random
 from random import randint
 from random import randrange
+import os
+import os.path
+from pathlib import Path
+import sys
+import subprocess
+from subprocess import Popen
+import time
 
 # Silence library version notifications
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning)
 #------------------------------------------------------------------------------
+
+#------------------------------------------------------------------------------
+# EXTRACT TARBALL IF df.csv IS COMPRESSED:
+#------------------------------------------------------------------------------
+
+filename = Path("df.csv")
+if not filename.is_file():
+    print('Uncompressing df.csv from tarball ...')
+    #tar -xzvf df.tar.gz
+    #tar -xjvf df.tar.bz2
+    #filename = "df.tar.gz"
+    #subprocess.Popen(['tar', '-xzvf', filename])
+    filename = "df.tar.bz2"
+    subprocess.Popen(['tar', '-xjvf', filename])
+    time.sleep(5) # pause 5 seconds to give tar extract time to complete prior to attempting pandas read_csv
 
 #------------------------------------------------------------------------------
 # SETTINGS: 
@@ -178,7 +199,7 @@ def update_station_info(value):
             cells=dict(values=[
                     [str(lat)], 
                     [str(lon)],
-                    [name], 
+                    [station], 
                     [country], 
                 ],
                 line_color='darkslategray',
