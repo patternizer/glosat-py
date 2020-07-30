@@ -54,6 +54,7 @@ import time
 # Silence library version notifications
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning)
+warnings.filterwarnings("ignore", category=RuntimeWarning)
 #------------------------------------------------------------------------------
 
 #------------------------------------------------------------------------------
@@ -591,7 +592,7 @@ if plot_spatial_coverage == True:
     plt.axvline(x=Q3, color='blue', label='Q3: ' + "{0:.0f}".format(Q3))    
     plt.tick_params(labelsize=fontsize)    
     plt.legend(loc='best', fontsize=fontsize)
-    plt.xlabel("Latitude, $\mathrm{\degree}W$", fontsize=fontsize)
+    plt.xlabel("Longitude, $\mathrm{\degree}W$", fontsize=fontsize)
     plt.ylabel("Monthly values per degree", fontsize=fontsize)
     plt.title(titlestr, fontsize=fontsize)
     plt.savefig(figstr)
