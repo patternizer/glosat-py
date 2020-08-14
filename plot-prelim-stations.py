@@ -4,8 +4,8 @@
 #------------------------------------------------------------------------------
 # PROGRAM: plot-prelim-stations.py
 #------------------------------------------------------------------------------
-# Version 0.7
-# 1 August, 2020
+# Version 0.10
+# 14 August, 2020
 # Michael Taylor
 # https://patternizer.github.io
 # patternizer AT gmail DOT com
@@ -70,11 +70,13 @@ station_start=0;  station_end=10
 load_df = True
 plot_temporal_coverage = True
 plot_spatial_coverage = True
-plot_station_timeseres = True
-plot_monthly_climatology = True
-plot_locations = True
+plot_station_timeseres = False
+plot_monthly_climatology = False
+plot_data_coverage = True
+plot_locations = False
 plot_delta_cc = True
 delta_cc_20C = True    
+normalize_timeseries = False
 
 #------------------------------------------------------------------------------
 # METHODS
@@ -280,17 +282,16 @@ if load_df == True:
     filename = Path("df.csv")
     if not filename.is_file():
         print('Uncompressing df.csv from tarball ...')
-        #tar -xzvf df.tar.gz
-        #tar -xjvf df.tar.bz2
         #filename = "df.tar.gz"
-        #subprocess.Popen(['tar', '-xzvf', filename])
+        #subprocess.Popen(['tar', '-xzvf', filename]) # = tar -xzvf df.tar.gz
         filename = "df.tar.bz2"
-        subprocess.Popen(['tar', '-xjvf', filename])
+        subprocess.Popen(['tar', '-xjvf', filename])  # = tar -xjvf df.tar.bz2
         time.sleep(5) # pause 5 seconds to give tar extract time to complete prior to attempting pandas read_csv
 
     df = pd.read_csv('df.csv', index_col=0)
 
 else:    
+    
     #------------------------------------------------------------------------------
     # I/O: stat4.CRUTEM5.1prelim01.1721-2019.txt (text dump from CDF4)
     #------------------------------------------------------------------------------
@@ -307,7 +308,7 @@ else:
     df = pd.read_csv('df.csv', index_col=0)
     df['stationlat'] = df['stationlat']/10.0
     df['stationlon'] = df['stationlon']/10.0
-    for j in range(1,12+1):
+    for j in range(1,13):
         df[df.columns[j]] = df[df.columns[j]]/100.0
 
     #------------------------------------------------------------------------------
@@ -320,65 +321,124 @@ else:
     #------------------------------------------------------------------------------
     df.to_csv('df.csv')
 
-#------------------------------------------------------------------------------
-# BAD DATA ANALYSIS
-#------------------------------------------------------------------------------
-
-# df['stationlat'].isnull().sum()
-# dlat = df[df['stationlat'].isnull()]
-# dlon = df[df['stationlon'].isnull()]
-# dcode = df[df['stationcode'].isnull()]
+    #------------------------------------------------------------------------------
+    # NORMALIZE TIMESERIES
+    #------------------------------------------------------------------------------
     
-# for i in range(len(dlat['stationcode'].unique())):
-#    fail_lat = list(dlat[dlat['stationcode']==dlat['stationcode'].unique()[i]]['stationinfo'])[0]
-#    fail_lon = list(dlon[dlon['stationcode']==dlon['stationcode'].unique()[i]]['stationinfo'])[0]
-#    print(fail_lat)
-#    print(fail_lon)
+    if normalize_timeseries == True:
+    
+        # Adjust station timeseries using normalisation for eacg month
         
-# dlat and dlon fails: 
-# array(['085997', '685807', '688607', '967811', '999099', '999216'], dtype=object)
+        df_norm = df.copy()
+#        df_norm['tmean']=np.nan
+#        df_norm['tsd']=np.nan
+#        for i in range(len(df_norm)): 
+#            if df_norm.iloc[i,1:13].isnull().sum() > 0:                
+#                df_norm['tmean'][i] = np.nan
+#                df_norm['tsd'][i] = np.nan
+#            else:                
+#                tmean = np.nanmean(np.array(df_norm.iloc[i,1:13]).ravel())
+#                tsd = np.nanstd(np.array(df_norm.iloc[i,1:13]).ravel())
+#                df_norm['tmean'][i] = tmean
+#                df_norm['tsd'][i] = tsd
+              
+        for i in range(len(df_norm['stationcode'].unique())):
+            
+            da = df_norm[df_norm['stationcode']==df_norm['stationcode'].unique()[i]]
+            for j in range(1,13):
+                df_norm.loc[da.index.tolist(), str(j)] = (da[str(j)]-da[str(j)].dropna().mean())/da[str(j)].dropna().std()
 
-# ['085997-999-9999', '100', 'SERRO', 'DO', 'PILAR', 'PORTUGAL', '19011930', '101901', '0']
-# ['685807-999-9999-9999', 'PIETERMARITZBERG', 'SOUTH', 'AFRICA', '18701886', '101870', '0']
-# ['688607-999-9999-9999', 'GRAHAMSTOWN', 'SOUTH', 'AFRICA', '18551870', '101855', '0']
-# ['967811-999-9999', '1400', 'TJIBODAS', 'INDONESIA', '19051948', '101905', '0']
-# ['999096-341-9999-9999', 'BREAKSEA', 'AUSTRALIA', '18971899', '101897', '0']
-# ['999099-999-9999-9999', 'LONDON', 'AUSTRALIA', '18971899', '101897', '0']
-# ['999216-999-9999-9999', 'LAS', 'DELICIAS', 'ARGENTINA', '19251964', '101925', '0']
+        df_norm.to_csv('df_norm.csv')
 
-lat_min = df['stationlat'].min()
-lat_max = df['stationlat'].max()
-lon_min = df['stationlon'].min()
-lon_max = df['stationlon'].max()
-year_min = df['year'].min()
-year_max = df['year'].max()
+#------------------------------------------------------------------------------
+# PLOT: station coverage - thanks to Kate-Willett (UKMO) for spec. humidity code:
+# https://github.com/Kate-Willett
+#------------------------------------------------------------------------------
 
+if plot_data_coverage == True:
+
+    # WMO ID blocks:
+        
+    #      0-199999 = Europe
+    # 200000-379999 = Russia and Eastern Europe
+    # 380000-439999 = Central Asia, Middle East, India/Pakistan
+    # 440000-599850 = East Asia, China and Taiwan
+    # 600000-689999 = Africa
+    # 690000-749999 = USA, Canada
+    # 760000-819999 = Central America
+    # 820000-879999 = South America
+    # 880000-899999 = Antarctica
+    # 911000-919999 = Pacific Islands (inc. Hawaii)
+    # 930000-949999 = Australasia (in. NZ)
+    # 960000-988999 = Indonesia/Phillippines/Borneo    
+    
+    collist=list([
+        'DarkRed',
+        'Crimson',
+        'OrangeRed',
+        'DarkOrange',
+        'Gold',
+        'DarkGreen',
+        'OliveDrab',
+        'MediumBlue',
+        'DeepSkyBlue',
+	    'MidnightBlue',
+        'MediumSlateBlue',
+        'DarkViolet'])
+    labblist=list([
+        ['Europe',0,199999],        
+        ['Russia/Eastern Europe',200000,379999],
+        ['Central and southern Asia/Middle East',380000,439999],
+        ['East Asia',440000,599999],
+	    ['Africa',600000,689999],
+	    ['North America',690000,749999],
+	    ['Central America',750000,799999],
+	    ['South America',800000,879999],
+	    ['Antarctica',880000,899999],
+	    ['Pacific Islands',900000,919999],
+	    ['Australasia',920000,949999],
+	    ['Indonesia/Philippines/Borneo',950000,999999]])
+
+#------------------------------------------------------------------------------
+# PLOT: delta CC +/- 30 years around median date value
+#------------------------------------------------------------------------------
+            
 if plot_delta_cc == True:
+        
+    #------------------------------------------------------------------------------
+    # EXTRACT TARBALL IF df_norm.csv IS COMPRESSED:
+    #------------------------------------------------------------------------------
 
-    # Delta CC +/- 30 years around median value (data to 1900) = 1885
-    
-    nbins = 1900 - year_min + 1
-    bins = np.linspace(year_min, 1900, nbins) 
-    counts, edges = np.histogram(df['year'], nbins, range=[year_min,1900], density=False)        
-    year_Q2 = pd.Series(bins).iloc[(pd.Series(np.cumsum(counts))-np.sum(counts)*0.50).abs().argsort()[:1]].values[0]
-    year_lo = year_Q2-30
-    year_hi = year_Q2+30
-    
+    filename = Path("df_norm.csv")
+    if not filename.is_file():
+        print('Uncompressing df_norm.csv from tarball ...')
+        #filename = "df_norm.tar.gz"
+        #subprocess.Popen(['tar', '-xzvf', filename]) # = tar -xzvf df_norm.tar.gz
+        filename = "df_norm.tar.bz2"
+        subprocess.Popen(['tar', '-xjvf', filename])  # = tar -xjvf df_norm.tar.bz2
+        time.sleep(5) # pause 5 seconds to give tar extract time to complete prior to attempting pandas read_csv
+
+    df = pd.read_csv('df_norm.csv', index_col=0)
+        
     def plot_hist_array(diff, figstr, titlestr):
+
+        deltamin = -2
+        deltamax = 2
+        deltastep = 0.1
         
         def plot_hist(diff,i,row,col):
             
-            nbins = int((0.5-(-0.5))/0.02) + 1
-            bins = np.linspace(-0.5, 0.5, nbins) 
-            counts, edges = np.histogram(diff[str(i)], nbins, range=[-0.5,0.5], density=False)    
+            nbins = int((deltamax-deltamin)/deltastep) + 1
+            bins = np.linspace(deltamin, deltamax, nbins) 
+            counts, edges = np.histogram(diff[str(i)], nbins, range=[deltamin,deltamax], density=False)    
             Q1 = pd.Series(bins).iloc[(pd.Series(np.cumsum(counts))-np.sum(counts)*0.25).abs().argsort()[:1]].values[0]
             Q2 = pd.Series(bins).iloc[(pd.Series(np.cumsum(counts))-np.sum(counts)*0.50).abs().argsort()[:1]].values[0]
             Q3 = pd.Series(bins).iloc[(pd.Series(np.cumsum(counts))-np.sum(counts)*0.75).abs().argsort()[:1]].values[0]
-            axs[row,col].fill_between(bins, counts, step="pre", facecolor='lightgrey', alpha=0.5)
-            axs[row,col].plot(bins, counts, drawstyle='steps', linewidth=1, color='black')    
-            axs[row,col].axvline(x=Q1, color='blue', label='Q1: ' + "{0:.2f}".format(Q1))   
-            axs[row,col].axvline(x=Q2, color='red', label='Q2: ' + "{0:.2f}".format(Q2))    
-            axs[row,col].axvline(x=Q3, color='blue', label='Q3: ' + "{0:.2f}".format(Q3))    
+            axs[row,col].fill_between(bins, counts, step="pre", facecolor='lightgrey', alpha=1.0)
+#            axs[row,col].plot(bins, counts, drawstyle='steps', linewidth=0.5, color='black')    
+            axs[row,col].axvline(x=Q1, color='blue', label='Q1: ' + "{0:.1f}".format(Q1))   
+            axs[row,col].axvline(x=Q2, color='red', label='Q2: ' + "{0:.1f}".format(Q2))    
+            axs[row,col].axvline(x=Q3, color='blue', label='Q3: ' + "{0:.1f}".format(Q3))    
             axs[row,col].set_title('Month=' + "{0:.0f}".format(i), fontsize=15)
         
         fig, axs = plt.subplots(4,3,figsize=(15,10))
@@ -395,8 +455,10 @@ if plot_delta_cc == True:
         plot_hist(diff,11,3,1)
         plot_hist(diff,12,3,2)
         for ax in axs.flat:
-            ax.set_xlabel("$\mathrm{\Delta}$(anomaly), $\mathrm{\degree}$C", fontsize=15)
-            ax.set_ylabel("Counts / 0.02$\mathrm{\degree}$C", fontsize=15)
+#            ax.set_xlabel("$\mathrm{\Delta}$(anomaly), $\mathrm{\degree}$C", fontsize=15)
+#            ax.set_ylabel("Counts / " + str(deltastep) + "$\mathrm{\degree}$C", fontsize=15)
+            ax.set_xlabel("$\mathrm{\Delta}$(normalised anomaly)", fontsize=15)
+            ax.set_ylabel("Counts / " + str(deltastep), fontsize=15)
         for ax in axs.flat:
             ax.label_outer()
             ax.legend(loc='best', fontsize=8)   
@@ -406,29 +468,40 @@ if plot_delta_cc == True:
         plt.close(fig)
 
     # Year range switch:
+
+#    nbins = 1900 - df['year'].min() + 1
+#    bins = np.linspace(df['year'].min(), 1900, nbins) 
+#    counts, edges = np.histogram(df['year'], nbins, range=[df['year'].min(),1900], density=False)        
+#    year_Q2 = pd.Series(bins).iloc[(pd.Series(np.cumsum(counts))-np.sum(counts)*0.50).abs().argsort()[:1]].values[0]
+#    year_lo = year_Q2-30
+#    year_hi = year_Q2+30
     
     if delta_cc_20C:        
            year_range_str = '1959_1988_1989_2018'
            year_range = '1989-2018 minus 1959-1988'
-           year_lo = 1959; year_hi = 2018; year_Q2 = 1988
+           year_lo = 1959; year_Q2 = 1988; year_hi = 2018
     else:
         year_range_str = '1856_1885_1886_1915'
         year_range = '1886-1915 minus 1856-1885'
-        year_lo = 1856; year_hi = 1915; year_Q2 = 1885
+        year_lo = 1856; year_Q2 = 1885; year_hi = 1915
 
     # Calculate delta CC for globe, regions and latitudinal bands
     
+    # NB: There are also country entries in the form e.g.:    
+    # 'USA---------'
+    # 'AUSTRALIA---'
+        
     delta_lo_60N90N = df[(df['year']>=year_lo) & (df['year']<=year_Q2) & (df['stationlat']>60) & (df['stationlat']<=90)].groupby(['stationcode']).mean()
     delta_hi_60N90N = df[(df['year']>year_Q2) & (df['year']<=year_hi) & (df['stationlat']>60) & (df['stationlat']<=90)].groupby(['stationcode']).mean()
     diff = delta_hi_60N90N - delta_lo_60N90N        
     Nstations = len((delta_lo_60N90N.append(delta_hi_60N90N)).iloc[:,1:13].index.unique())        
     Nmonths = np.isfinite(delta_lo_60N90N.append(delta_hi_60N90N)).iloc[:,1:13].sum().sum()
     figstr = 'delta_cc_' + year_range_str + '_60N90N.png'
-    titlestr = 'Histograms of mean change in anomaly: ' + year_range + '\n 60<lat≤90°N' + ': N(stations)=' + "{0:.0f}".format(Nstations) + ',' + ' N(months)=' + "{0:.0f}".format(Nmonths)
+    titlestr = 'Change in normalised anomaly: ' + year_range + '\n 60<lat≤90°N' + ': N(stations)=' + "{0:.0f}".format(Nstations) + ',' + ' N(months)=' + "{0:.0f}".format(Nmonths)
     lon = (delta_lo_60N90N.append(delta_hi_60N90N))['stationlon']
     lat = (delta_lo_60N90N.append(delta_hi_60N90N))['stationlat']
     mapfigstr = 'map_' + figstr 
-    maptitlestr = titlestr[65:]
+    maptitlestr = titlestr[57:]
     plot_stations(lon,lat,mapfigstr,maptitlestr)
     plot_hist_array(diff, figstr, titlestr)
 
@@ -438,11 +511,11 @@ if plot_delta_cc == True:
     Nstations = len((delta_lo_30N60N.append(delta_hi_30N60N)).iloc[:,1:13].index.unique())        
     Nmonths = np.isfinite(delta_lo_30N60N.append(delta_hi_30N60N)).iloc[:,1:13].sum().sum()
     figstr = 'delta_cc_' + year_range_str + '_30N60N.png'
-    titlestr = 'Histograms of mean change in anomaly: ' + year_range + '\n 30<lat≤60°N' + ': N(stations)=' + "{0:.0f}".format(Nstations) + ',' + ' N(months)=' + "{0:.0f}".format(Nmonths)
+    titlestr = 'Change in normalised anomaly: ' + year_range + '\n 30<lat≤60°N' + ': N(stations)=' + "{0:.0f}".format(Nstations) + ',' + ' N(months)=' + "{0:.0f}".format(Nmonths)
     lon = (delta_lo_30N60N.append(delta_hi_30N60N))['stationlon']
     lat = (delta_lo_30N60N.append(delta_hi_30N60N))['stationlat']
     mapfigstr = 'map_' + figstr 
-    maptitlestr = titlestr[65:]
+    maptitlestr = titlestr[57:]
     plot_stations(lon,lat,mapfigstr,maptitlestr)
     plot_hist_array(diff, figstr, titlestr)
 
@@ -452,11 +525,11 @@ if plot_delta_cc == True:
     Nstations = len((delta_lo_00N30N.append(delta_hi_00N30N)).iloc[:,1:13].index.unique())        
     Nmonths = np.isfinite(delta_lo_00N30N.append(delta_hi_00N30N)).iloc[:,1:13].sum().sum()
     figstr = 'delta_cc_' + year_range_str + '_00N30N.png'
-    titlestr = 'Histograms of mean change in anomaly: ' + year_range + '\n 0<lat≤30°N' + ': N(stations)=' + "{0:.0f}".format(Nstations) + ',' + ' N(months)=' + "{0:.0f}".format(Nmonths)
+    titlestr = 'Change in normalised anomaly: ' + year_range + '\n 0<lat≤30°N' + ': N(stations)=' + "{0:.0f}".format(Nstations) + ',' + ' N(months)=' + "{0:.0f}".format(Nmonths)
     lon = (delta_lo_00N30N.append(delta_hi_00N30N))['stationlon']
     lat = (delta_lo_00N30N.append(delta_hi_00N30N))['stationlat']
     mapfigstr = 'map_' + figstr 
-    maptitlestr = titlestr[65:]
+    maptitlestr = titlestr[57:]
     plot_stations(lon,lat,mapfigstr,maptitlestr)
     plot_hist_array(diff, figstr, titlestr)
 
@@ -466,11 +539,11 @@ if plot_delta_cc == True:
     Nstations = len((delta_lo_00S30S.append(delta_hi_00S30S)).iloc[:,1:13].index.unique())        
     Nmonths = np.isfinite(delta_lo_00S30S.append(delta_hi_00S30S)).iloc[:,1:13].sum().sum()
     figstr = 'delta_cc_' + year_range_str + '_00S30S.png'
-    titlestr = 'Histograms of mean change in anomaly: ' + year_range + '\n 0≤lat≤30°S' + ': N(stations)=' + "{0:.0f}".format(Nstations) + ',' + ' N(months)=' + "{0:.0f}".format(Nmonths)
+    titlestr = 'Change in normalised anomaly: ' + year_range + '\n 0≤lat≤30°S' + ': N(stations)=' + "{0:.0f}".format(Nstations) + ',' + ' N(months)=' + "{0:.0f}".format(Nmonths)
     lon = (delta_lo_00S30S.append(delta_hi_00S30S))['stationlon']
     lat = (delta_lo_00S30S.append(delta_hi_00S30S))['stationlat']
     mapfigstr = 'map_' + figstr 
-    maptitlestr = titlestr[65:]
+    maptitlestr = titlestr[57:]
     plot_stations(lon,lat,mapfigstr,maptitlestr)
     plot_hist_array(diff, figstr, titlestr)
 
@@ -480,11 +553,11 @@ if plot_delta_cc == True:
     Nstations = len((delta_lo_30S60S.append(delta_hi_30S60S)).iloc[:,1:13].index.unique())        
     Nmonths = np.isfinite(delta_lo_30S60S.append(delta_hi_30S60S)).iloc[:,1:13].sum().sum()
     figstr = 'delta_cc_' + year_range_str + '_30S60S.png'
-    titlestr = 'Histograms of mean change in anomaly: ' + year_range + '\n 30<lat≤60°S' + ': N(stations)=' + "{0:.0f}".format(Nstations) + ',' + ' N(months)=' + "{0:.0f}".format(Nmonths)
+    titlestr = 'Change in normalised anomaly: ' + year_range + '\n 30<lat≤60°S' + ': N(stations)=' + "{0:.0f}".format(Nstations) + ',' + ' N(months)=' + "{0:.0f}".format(Nmonths)
     lon = (delta_lo_30S60S.append(delta_hi_30S60S))['stationlon']
     lat = (delta_lo_30S60S.append(delta_hi_30S60S))['stationlat']
     mapfigstr = 'map_' + figstr 
-    maptitlestr = titlestr[65:]
+    maptitlestr = titlestr[57:]
     plot_stations(lon,lat,mapfigstr,maptitlestr)
     plot_hist_array(diff, figstr, titlestr)
 
@@ -494,11 +567,11 @@ if plot_delta_cc == True:
     Nstations = len((delta_lo_60S90S.append(delta_hi_60S90S)).iloc[:,1:13].index.unique())        
     Nmonths = np.isfinite(delta_lo_60S90S.append(delta_hi_60S90S)).iloc[:,1:13].sum().sum()
     figstr = 'delta_cc_' + year_range_str + '_60S90S.png'
-    titlestr = 'Histograms of mean change in anomaly: ' + year_range + '\n 60<lat≤90°S' + ': N(stations)=' + "{0:.0f}".format(Nstations) + ',' + ' N(months)=' + "{0:.0f}".format(Nmonths)
+    titlestr = 'Change in normalised anomaly: ' + year_range + '\n 60<lat≤90°S' + ': N(stations)=' + "{0:.0f}".format(Nstations) + ',' + ' N(months)=' + "{0:.0f}".format(Nmonths)
     lon = (delta_lo_60S90S.append(delta_hi_60S90S))['stationlon']
     lat = (delta_lo_60S90S.append(delta_hi_60S90S))['stationlat']
     mapfigstr = 'map_' + figstr 
-    maptitlestr = titlestr[65:]
+    maptitlestr = titlestr[57:]
     plot_stations(lon,lat,mapfigstr,maptitlestr)
     plot_hist_array(diff, figstr, titlestr)
 
@@ -508,25 +581,25 @@ if plot_delta_cc == True:
     Nstations = len((delta_lo_global.append(delta_hi_global)).iloc[:,1:13].index.unique())        
     Nmonths = np.isfinite(delta_lo_global.append(delta_hi_global)).iloc[:,1:13].sum().sum()
     figstr = 'delta_cc_' + year_range_str + '_global.png'
-    titlestr = 'Histograms of mean change in anomaly: ' + year_range + '\n Global' + ': N(stations)=' + "{0:.0f}".format(Nstations) + ',' + ' N(months)=' + "{0:.0f}".format(Nmonths)
+    titlestr = 'Change in normalised anomaly: ' + year_range + '\n Global' + ': N(stations)=' + "{0:.0f}".format(Nstations) + ',' + ' N(months)=' + "{0:.0f}".format(Nmonths)
     lon = (delta_lo_global.append(delta_hi_global))['stationlon']
     lat = (delta_lo_global.append(delta_hi_global))['stationlat']
     mapfigstr = 'map_' + figstr 
-    maptitlestr = titlestr[65:]
+    maptitlestr = titlestr[57:]
     plot_stations(lon,lat,mapfigstr,maptitlestr)
     plot_hist_array(diff, figstr, titlestr)
 
-    delta_lo_us = df[(df['year']>=year_lo) & (df['year']<=year_Q2) & (df['stationcountry']=='USA')].groupby(['stationcode']).mean()
-    delta_hi_us = df[(df['year']>year_Q2) & (df['year']<=year_hi) & (df['stationcountry']=='USA')].groupby(['stationcode']).mean()
+    delta_lo_us = df[(df['year']>=year_lo) & (df['year']<=year_Q2) & ((df['stationcountry']=='USA') | (df['stationcountry']=='USA---------'))].groupby(['stationcode']).mean()
+    delta_hi_us = df[(df['year']>year_Q2) & (df['year']<=year_hi) & ((df['stationcountry']=='USA') | (df['stationcountry']=='USA---------'))].groupby(['stationcode']).mean()
     diff = delta_hi_us - delta_lo_us    
     Nstations = len((delta_lo_us.append(delta_hi_us)).iloc[:,1:13].index.unique())        
     Nmonths = np.isfinite(delta_lo_us.append(delta_hi_us)).iloc[:,1:13].sum().sum()
     figstr = 'delta_cc_' + year_range_str + '_us.png'
-    titlestr = 'Histograms of mean change in anomaly: ' + year_range + '\n USA' + ': N(stations)=' + "{0:.0f}".format(Nstations) + ',' + ' N(months)=' + "{0:.0f}".format(Nmonths)
+    titlestr = 'Change in normalised anomaly: ' + year_range + '\n USA' + ': N(stations)=' + "{0:.0f}".format(Nstations) + ',' + ' N(months)=' + "{0:.0f}".format(Nmonths)
     lon = (delta_lo_us.append(delta_hi_us))['stationlon']
     lat = (delta_lo_us.append(delta_hi_us))['stationlat']
     mapfigstr = 'map_' + figstr 
-    maptitlestr = titlestr[65:]
+    maptitlestr = titlestr[57:]
     plot_stations(lon,lat,mapfigstr,maptitlestr)
     plot_hist_array(diff, figstr, titlestr)
 
@@ -536,11 +609,11 @@ if plot_delta_cc == True:
     Nstations = len((delta_lo_australia.append(delta_hi_australia)).iloc[:,1:13].index.unique())        
     Nmonths = np.isfinite(delta_lo_australia.append(delta_hi_australia)).iloc[:,1:13].sum().sum()
     figstr = 'delta_cc_' + year_range_str + '_australia.png'
-    titlestr = 'Histograms of mean change in anomaly: ' + year_range + '\n Australia' + ': N(stations)=' + "{0:.0f}".format(Nstations) + ',' + ' N(months)=' + "{0:.0f}".format(Nmonths)
+    titlestr = 'Change in normalised anomaly: ' + year_range + '\n Australia' + ': N(stations)=' + "{0:.0f}".format(Nstations) + ',' + ' N(months)=' + "{0:.0f}".format(Nmonths)
     lon = (delta_lo_australia.append(delta_hi_australia))['stationlon']
     lat = (delta_lo_australia.append(delta_hi_australia))['stationlat']
     mapfigstr = 'map_' + figstr 
-    maptitlestr = titlestr[65:]
+    maptitlestr = titlestr[57:]
     plot_stations(lon,lat,mapfigstr,maptitlestr)
     plot_hist_array(diff, figstr, titlestr)
 
@@ -550,11 +623,11 @@ if plot_delta_cc == True:
     Nstations = len((delta_lo_00S60S_noaus.append(delta_hi_00S60S_noaus)).iloc[:,1:13].index.unique())        
     Nmonths = np.isfinite(delta_lo_00S60S_noaus.append(delta_hi_00S60S_noaus)).iloc[:,1:13].sum().sum()
     figstr = 'delta_cc_' + year_range_str + '_00S60S_noaus.png'
-    titlestr = 'Histograms of mean change in anomaly: ' + year_range + '\n 0≤lat≤60°S (-Australia)' + ': N(stations)=' + "{0:.0f}".format(Nstations) + ',' + ' N(months)=' + "{0:.0f}".format(Nmonths)
+    titlestr = 'Change in normalised anomaly: ' + year_range + '\n 0≤lat≤60°S (-Australia)' + ': N(stations)=' + "{0:.0f}".format(Nstations) + ',' + ' N(months)=' + "{0:.0f}".format(Nmonths)
     lon = (delta_lo_00S60S_noaus.append(delta_hi_00S60S_noaus))['stationlon']
     lat = (delta_lo_00S60S_noaus.append(delta_hi_00S60S_noaus))['stationlat']
     mapfigstr = 'map_' + figstr 
-    maptitlestr = titlestr[65:]
+    maptitlestr = titlestr[57:]
     plot_stations(lon,lat,mapfigstr,maptitlestr)
     plot_hist_array(diff, figstr, titlestr)
         
@@ -564,11 +637,11 @@ if plot_delta_cc == True:
     Nstations = len((delta_lo_eu.append(delta_hi_eu)).iloc[:,1:13].index.unique())        
     Nmonths = np.isfinite(delta_lo_eu.append(delta_hi_eu)).iloc[:,1:13].sum().sum()
     figstr = 'delta_cc_' + year_range_str + '_eu.png'
-    titlestr = 'Histograms of mean change in anomaly: ' + year_range + '\n 30<lat≤70°N, -10<lon≤50°W: Europe (+ME)' + ': N(stations)=' + "{0:.0f}".format(Nstations) + ',' + ' N(months)=' + "{0:.0f}".format(Nmonths)
+    titlestr = 'Change in normalised anomaly: ' + year_range + '\n 30<lat≤70°N, -10<lon≤50°W: Europe (+ME)' + ': N(stations)=' + "{0:.0f}".format(Nstations) + ',' + ' N(months)=' + "{0:.0f}".format(Nmonths)
     lon = (delta_lo_eu.append(delta_hi_eu))['stationlon']
     lat = (delta_lo_eu.append(delta_hi_eu))['stationlat']
     mapfigstr = 'map_' + figstr 
-    maptitlestr = titlestr[65:]
+    maptitlestr = titlestr[57:]
     plot_stations(lon,lat,mapfigstr,maptitlestr)
     plot_hist_array(diff, figstr, titlestr)
 
@@ -578,37 +651,15 @@ if plot_delta_cc == True:
     Nstations = len((delta_lo_eu2.append(delta_hi_eu2)).iloc[:,1:13].index.unique())        
     Nmonths = np.isfinite(delta_lo_eu2.append(delta_hi_eu2)).iloc[:,1:13].sum().sum()
     figstr = 'delta_cc_' + year_range_str + '_eu2.png'
-    titlestr = 'Histograms of mean change in anomaly: ' + year_range + '\n 30<lat≤70°N, -10<lon≤30°W: Europe (-ME)' + ': N(stations)=' + "{0:.0f}".format(Nstations) + ',' + ' N(months)=' + "{0:.0f}".format(Nmonths)
+    titlestr = 'Change in normalised anomaly: ' + year_range + '\n 30<lat≤70°N, -10<lon≤30°W: Europe (-ME)' + ': N(stations)=' + "{0:.0f}".format(Nstations) + ',' + ' N(months)=' + "{0:.0f}".format(Nmonths)
     lon = (delta_lo_eu2.append(delta_hi_eu2))['stationlon']
     lat = (delta_lo_eu2.append(delta_hi_eu2))['stationlat']
     mapfigstr = 'map_' + figstr 
-    maptitlestr = titlestr[65:]
+    maptitlestr = titlestr[57:]
     plot_stations(lon,lat,mapfigstr,maptitlestr)
     plot_hist_array(diff, figstr, titlestr)
 
-    #for i in range(1,13):
-    
-    #    counts, edges = np.histogram(diff[str(i)], nbins, range=[-1.0,1.0+0.01], density=False)    
-    #    Q1 = pd.Series(bins).iloc[(pd.Series(np.cumsum(counts))-np.sum(counts)*0.25).abs().argsort()[:1]].values[0]
-    #    Q2 = pd.Series(bins).iloc[(pd.Series(np.cumsum(counts))-np.sum(counts)*0.50).abs().argsort()[:1]].values[0]
-    #    Q3 = pd.Series(bins).iloc[(pd.Series(np.cumsum(counts))-np.sum(counts)*0.75).abs().argsort()[:1]].values[0]
-                 
-    #    figstr = 'delta_cc_' + "{0:.0f}".format(i) + '.png'
-    #    titlestr = 'Histogram of mean change in anomaly $\mathrm{\pm}$ 30 years of 1885: month=' + "{0:.0f}".format(i)
-    
-    #    fig, ax = plt.subplots(figsize=(15,10))          
-    #    plt.fill_between(bins, counts, step="post", facecolor='lightgrey', alpha=0.5)
-    #    plt.plot(bins, counts, drawstyle='steps-post', linewidth=2, color='black')    
-    #    plt.axvline(x=Q1, color='blue', label='Q1: ' + "{0:.2f}".format(Q1))   
-    #    plt.axvline(x=Q2, color='red', label='Q2: ' + "{0:.2f}".format(Q2))    
-    #    plt.axvline(x=Q3, color='blue', label='Q3: ' + "{0:.2f}".format(Q3))    
-    #    plt.tick_params(labelsize=fontsize)    
-    #    plt.legend(loc='best', fontsize=fontsize)
-    #    plt.xlabel("$\mathrm{\Delta}$(anomaly), $\mathrm{\degree}$C", fontsize=fontsize)
-    #    plt.ylabel("Stations per 0.01$\mathrm{\degree}$C bin", fontsize=fontsize)
-    #    plt.title(titlestr, fontsize=fontsize)
-    #    plt.savefig(figstr)
-    #    plt.close(fig)
+    df = pd.read_csv('df.csv', index_col=0)
 
 #------------------------------------------------------------------------------
 # PLOTS
@@ -616,24 +667,25 @@ if plot_delta_cc == True:
 
 if plot_temporal_coverage == True:
     
+    #------------------------------------------------------------------------------
     # PLOT: histogram of temporal coverage: to 1900
+    #------------------------------------------------------------------------------
              
-    nbins = 1900 - year_min + 1
-    bins = np.linspace(year_min, 1900, nbins) 
-#    counts, edges = np.histogram(df[df['year']<=1900]['year'], nbins, range=[year_min,1900+1], density=False)    
-    counts, edges = np.histogram(df['year'], nbins, range=[year_min,1900], density=False)        
+    nbins = 1900 - df['year'].min() + 1
+    bins = np.linspace(df['year'].min(), 1900, nbins) 
+#    counts, edges = np.histogram(df[df['year']<=1900]['year'], nbins, range=[df['year'].min(),1900+1], density=False)    
+    counts, edges = np.histogram(df['year'], nbins, range=[df['year'].min(),1900], density=False)        
     Q1 = pd.Series(bins).iloc[(pd.Series(np.cumsum(counts))-np.sum(counts)*0.25).abs().argsort()[:1]].values[0]
     Q2 = pd.Series(bins).iloc[(pd.Series(np.cumsum(counts))-np.sum(counts)*0.50).abs().argsort()[:1]].values[0]
     Q3 = pd.Series(bins).iloc[(pd.Series(np.cumsum(counts))-np.sum(counts)*0.75).abs().argsort()[:1]].values[0]
-
              
     figstr = 'crutem5-histogram-1900.png'
-    titlestr = 'Histogram of yearly coverage for CRUTEM5 (to 1900): N=' + "{0:.0f}".format(np.sum(counts))
+    titlestr = 'Yearly coverage: CRUTEM5 (to 1900): N=' + "{0:.0f}".format(np.sum(counts))
 
     fig, ax = plt.subplots(figsize=(15,10))          
 #    plt.hist(df[df['year']<=1900]['year'], bins=nbins, density=False, facecolor='grey', alpha=0.5, label='KDE')
-    plt.fill_between(bins, counts, step="pre", facecolor='lightgrey', alpha=0.5)
-    plt.plot(bins, counts, drawstyle='steps', linewidth=2, color='black')    
+    plt.fill_between(bins, counts, step="pre", facecolor='lightgrey', alpha=1.0)    
+#    plt.plot(bins, counts, drawstyle='steps', linewidth=2, color='black')    
     plt.axvline(x=Q1, color='blue', label='Q1: ' + "{0:.0f}".format(Q1))   
     plt.axvline(x=Q2, color='red', label='Q2: ' + "{0:.0f}".format(Q2))    
     plt.axvline(x=Q3, color='blue', label='Q3: ' + "{0:.0f}".format(Q3))    
@@ -645,21 +697,23 @@ if plot_temporal_coverage == True:
     plt.savefig(figstr)
     plt.close(fig)
 
+    #------------------------------------------------------------------------------
     # PLOT: histogram of temporal coverage: full record
+    #------------------------------------------------------------------------------
 
-    nbins = year_max - year_min + 1
-    bins = np.linspace(year_min, year_max, nbins) 
-    counts, edges = np.histogram(df['year'], nbins, range=[year_min,year_max], density=False)    
+    nbins = df['year'].max() - df['year'].min() + 1
+    bins = np.linspace(df['year'].min(), df['year'].max(), nbins) 
+    counts, edges = np.histogram(df['year'], nbins, range=[df['year'].min(),df['year'].max()], density=False)    
     Q1 = pd.Series(bins).iloc[(pd.Series(np.cumsum(counts))-np.sum(counts)*0.25).abs().argsort()[:1]].values[0]
     Q2 = pd.Series(bins).iloc[(pd.Series(np.cumsum(counts))-np.sum(counts)*0.50).abs().argsort()[:1]].values[0]
     Q3 = pd.Series(bins).iloc[(pd.Series(np.cumsum(counts))-np.sum(counts)*0.75).abs().argsort()[:1]].values[0]
              
     figstr = 'crutem5-histogram-full.png'
-    titlestr = 'Histogram of yearly coverage for CRUTEM5 (full): N=' + "{0:.0f}".format(np.sum(counts)) 
+    titlestr = 'Yearly coverage: CRUTEM5 (full): N=' + "{0:.0f}".format(np.sum(counts)) 
 
     fig, ax = plt.subplots(figsize=(15,10))          
-    plt.fill_between(bins, counts, step="pre", facecolor='lightgrey', alpha=0.5)
-    plt.plot(bins, counts, drawstyle='steps', linewidth=2, color='black')    
+    plt.fill_between(bins, counts, step="pre", facecolor='lightgrey', alpha=1.0)
+#    plt.plot(bins, counts, drawstyle='steps', linewidth=2, color='black')    
     plt.axvline(x=Q1, color='blue', label='Q1: ' + "{0:.0f}".format(Q1))    
     plt.axvline(x=Q2, color='red', label='Q2: ' + "{0:.0f}".format(Q2))    
     plt.axvline(x=Q3, color='blue', label='Q3: ' + "{0:.0f}".format(Q3))    
@@ -673,7 +727,9 @@ if plot_temporal_coverage == True:
 
 if plot_spatial_coverage == True:
     
+    #------------------------------------------------------------------------------
     # PLOT: histogram of latitudinal coverage
+    #------------------------------------------------------------------------------
 
     nbins = lat_end - lat_start + 1
     bins = np.linspace(lat_start, lat_end, nbins) 
@@ -683,11 +739,11 @@ if plot_spatial_coverage == True:
     Q3 = pd.Series(bins).iloc[(pd.Series(np.cumsum(counts))-np.sum(counts)*0.75).abs().argsort()[:1]].values[0]
 
     figstr = 'crutem5-histogram-lat-full.png'
-    titlestr = 'Histogram of latitudinal coverage: CRUTEM5 (full)'
+    titlestr = 'Latitudinal coverage: CRUTEM5 (full)'
 
     fig, ax = plt.subplots(figsize=(15,10))          
-    plt.fill_between(bins, counts, step="pre", facecolor='lightgrey', alpha=0.5)
-    plt.plot(bins, counts, drawstyle='steps', linewidth=2, color='black')    
+    plt.fill_between(bins, counts, step="pre", facecolor='lightgrey', alpha=1.0)
+#    plt.plot(bins, counts, drawstyle='steps', linewidth=2, color='black')    
     plt.axvline(x=Q1, color='blue', label='Q1: ' + "{0:.0f}".format(Q1))    
     plt.axvline(x=Q2, color='red', label='Q2: ' + "{0:.0f}".format(Q2))    
     plt.axvline(x=Q3, color='blue', label='Q3: ' + "{0:.0f}".format(Q3))    
@@ -699,7 +755,9 @@ if plot_spatial_coverage == True:
     plt.savefig(figstr)
     plt.close(fig)
 
+    #------------------------------------------------------------------------------
     # PLOT: histogram of longitudinal coverage
+    #------------------------------------------------------------------------------
 
     nbins = lon_end - lon_start + 1
     bins = np.linspace(lon_start, lon_end, nbins) 
@@ -709,11 +767,11 @@ if plot_spatial_coverage == True:
     Q3 = pd.Series(bins).iloc[(pd.Series(np.cumsum(counts))-np.sum(counts)*0.75).abs().argsort()[:1]].values[0]
 
     figstr = 'crutem5-histogram-lon-full.png'
-    titlestr = 'Histogram of longitudinal coverage: CRUTEM5 (full)'
+    titlestr = 'Longitudinal coverage: CRUTEM5 (full)'
 
     fig, ax = plt.subplots(figsize=(15,10))          
-    plt.fill_between(bins, counts, step="pre", facecolor='lightgrey', alpha=0.5)
-    plt.plot(bins, counts, drawstyle='steps', linewidth=2, color='black')    
+    plt.fill_between(bins, counts, step="pre", facecolor='lightgrey', alpha=1.0)
+#    plt.plot(bins, counts, drawstyle='steps', linewidth=2, color='black')    
     plt.axvline(x=Q1, color='blue', label='Q1: ' + "{0:.0f}".format(Q1))    
     plt.axvline(x=Q2, color='red', label='Q2: ' + "{0:.0f}".format(Q2))    
     plt.axvline(x=Q3, color='blue', label='Q3: ' + "{0:.0f}".format(Q3))    
@@ -727,7 +785,9 @@ if plot_spatial_coverage == True:
           
 if plot_station_timeseres == True:
     
+    #------------------------------------------------------------------------------
     # PLOT: timeseries per station
+    #------------------------------------------------------------------------------
         
     #for j in range(len(np.unique(stationcode))):
     for j in range(station_start,station_end):
@@ -778,7 +838,9 @@ if plot_station_timeseres == True:
 
 if plot_monthly_climatology == True:
     
+    #------------------------------------------------------------------------------
     # PLOT: seasonal cycle per station
+    #------------------------------------------------------------------------------
         
     #for j in range(len(np.unique(stationcode))):        
     for j in range(station_start,station_end):
@@ -873,7 +935,9 @@ if plot_monthly_climatology == True:
 
 if plot_locations == True:
     
-    # PLOT: quick plot of stations on world map
+    #------------------------------------------------------------------------------
+    # PLOT: stations on world map
+    #------------------------------------------------------------------------------
 
     lon = df['stationlon']
     lat = df['stationlat']
