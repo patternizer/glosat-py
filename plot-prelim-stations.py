@@ -4,8 +4,8 @@
 #------------------------------------------------------------------------------
 # PROGRAM: plot-prelim-stations.py
 #------------------------------------------------------------------------------
-# Version 0.10
-# 14 August, 2020
+# Version 0.11
+# 15 August, 2020
 # Michael Taylor
 # https://patternizer.github.io
 # patternizer AT gmail DOT com
@@ -17,6 +17,7 @@
 import numpy as np
 import numpy.ma as ma
 from mod import Mod
+import itertools
 import pandas as pd
 # Plotting libraries:
 import matplotlib
@@ -67,14 +68,14 @@ lat_start = -90;  lat_end = 90
 lon_start = -180; lon_end = 180
 station_start=0;  station_end=10
 
-load_df = True
-plot_temporal_coverage = True
-plot_spatial_coverage = True
+load_df = False
+plot_data_coverage = True
+plot_temporal_coverage = False
+plot_spatial_coverage = False
 plot_station_timeseres = False
 plot_monthly_climatology = False
-plot_data_coverage = True
 plot_locations = False
-plot_delta_cc = True
+plot_delta_cc = False
 delta_cc_20C = True    
 normalize_timeseries = False
 
@@ -357,6 +358,21 @@ else:
 
 if plot_data_coverage == True:
 
+#   plot timeseries for each month of year:
+    
+    fig = plt.figure(1,figsize=(15,10))
+#    plt.plot(df.groupby('year').mean().iloc[:,0:12])
+    for i in range(0,12):
+        plt.plot(df.groupby('year').mean().iloc[:,i], label='Month=' + str(i+1))
+    plt.legend(fontsize=fontsize/2)
+    plt.tick_params(axis='both', which='major', labelsize=fontsize)    
+    plt.xlabel('Year', fontsize=fontsize)
+    plt.ylabel('Annual mean anomaly', fontsize=fontsize)
+    plt.savefig('monthly-anomaly-timeseries.png')
+    plt.close(fig)
+                            
+    # Contruct palette of colours over station ID
+
     # WMO ID blocks:
         
     #      0-199999 = Europe
@@ -372,7 +388,7 @@ if plot_data_coverage == True:
     # 930000-949999 = Australasia (in. NZ)
     # 960000-988999 = Indonesia/Phillippines/Borneo    
     
-    collist=list([
+    colourlist=list([
         'DarkRed',
         'Crimson',
         'OrangeRed',
@@ -385,7 +401,7 @@ if plot_data_coverage == True:
 	    'MidnightBlue',
         'MediumSlateBlue',
         'DarkViolet'])
-    labblist=list([
+    labellist=list([
         ['Europe',0,199999],        
         ['Russia/Eastern Europe',200000,379999],
         ['Central and southern Asia/Middle East',380000,439999],
@@ -398,7 +414,82 @@ if plot_data_coverage == True:
 	    ['Pacific Islands',900000,919999],
 	    ['Australasia',920000,949999],
 	    ['Indonesia/Philippines/Borneo',950000,999999]])
+    stationlist = df['stationcode'].unique()    
 
+    stationcolours = []
+    for i in range(len(labellist)):        
+        labelcount = ((stationlist>=labellist[i][1]) & (stationlist<=labellist[i][2])).sum()        
+        stationcolours.append(np.tile(colourlist[i],labelcount))
+    stationcolours = list(itertools.chain.from_iterable(stationcolours))
+                             
+    # Contruct timeseries of yearly station count
+
+    station_yearly_count = df.groupby('year')['stationcode'].count()
+    t_station_yearly_count = pd.date_range(start=str(df['year'].min()), periods=len(global_yearly_mean), freq='A')
+
+    # Contruct timeseries of yearly mean and s.d.
+
+    global_yearly_mean = []
+    global_yearly_std = []
+    for i in range(df['year'].min(),df['year'].max()+1):                    
+        yearly_mean = np.nanmean(np.array(df[df['year']==i].iloc[:,range(1,13)]).ravel())                                     
+        yearly_std = np.nanstd(np.array(df[df['year']==i].iloc[:,range(1,13)]).ravel())                                                 
+        global_yearly_mean.append(yearly_mean)
+        global_yearly_std.append(yearly_std)
+    t_yearly = pd.date_range(start=str(df['year'].min()), periods=len(global_yearly_mean), freq='A')
+
+    # Contruct timeseries of monthly mean and s.d.
+
+    global_monthly_mean = []
+    global_monthly_std = []
+    for i in range(df['year'].min(),df['year'].max()+1):            
+        for j in range(1,13):
+            monthly_mean = np.nanmean(df[df['year']==i][str(j)])                                          
+            monthly_std = np.nanstd(df[df['year']==i][str(j)])                                          
+            global_monthly_mean.append(monthly_mean)
+            global_monthly_std.append(monthly_std)
+    t_monthly = pd.date_range(start=str(df['year'].min()), periods=len(global_monthly_mean), freq='M')
+
+    # PLOT: timeseries of monthly obs per station
+
+#    figstr = 'crutem5-gaps-plus-mean-anomaly.png'
+#    titlestr = 'CRUTEM5: Data Coverage & Annual temperature anomaly'    
+    figstr = 'crutem5-gaps-plus-yearly-station-count.png'
+    titlestr = 'CRUTEM5: Data Coverage & Annual station count'    
+    xstr = 'Year'
+    y1str = 'Station ID'
+#    y2str = 'Annual mean'
+    y2str = 'Annual station count'
+            
+    fig = plt.figure(1,figsize=(15,10))
+    plt.clf()	# needs to be called after figure!!! (create the figure, then clear the plot space)
+    ax1=plt.subplot(1,1,1)
+    ax1.tick_params(axis='both', which='major', labelsize=fontsize)
+        
+    for i in range(len(df['stationcode'].unique())):            
+            
+        da = df[df['stationcode']==df['stationcode'].unique()[i]].iloc[:,range(0,13)]
+        ts = np.array([ da.iloc[i,1:].to_list() for i in range(len(da)) ]).ravel()            
+        t = pd.date_range(start=str(da['year'].iloc[0]), periods=len(da)*12, freq='M')
+        mask = np.isfinite(ts)
+        x = t[mask]
+        y = np.ones(len(ts))[mask]*df['stationcode'].unique()[i]
+            
+        ax1.plot(x, y, color=stationcolours[i], linewidth=1)
+    
+    ax1.set_title(titlestr,size=fontsize)
+    ax1.set_xlabel(xstr,size=fontsize)
+    ax1.set_ylabel(y1str,size=fontsize)    
+    ax2=ax1.twinx()
+    ax2.set_ylabel(y2str,size=fontsize)
+    ax2.tick_params(axis='both', which='major', labelsize=fontsize)
+    
+#    ax2.plot(t_yearly, global_yearly_mean, 'black', linewidth=2)
+    ax2.plot(t_station_yearly_count, station_yearly_count, 'black', linewidth=2)
+
+    plt.savefig(figstr)
+    plt.close(fig)
+                    
 #------------------------------------------------------------------------------
 # PLOT: delta CC +/- 30 years around median date value
 #------------------------------------------------------------------------------
@@ -666,6 +757,9 @@ if plot_delta_cc == True:
 #------------------------------------------------------------------------------
 
 if plot_temporal_coverage == True:
+    
+#    coverage per month:    
+#    plt.plot(df.groupby('year').sum().iloc[:,0:12])
     
     #------------------------------------------------------------------------------
     # PLOT: histogram of temporal coverage: to 1900
