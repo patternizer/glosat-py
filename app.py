@@ -3,8 +3,8 @@
 #------------------------------------------------------------------------------
 # PROGRAM: app.py
 #------------------------------------------------------------------------------
-# Version 0.4
-# 29 July, 2020
+# Version 0.5
+# 19 August, 2020
 # Michael Taylor
 # https://patternizer.github.io
 # patternizer AT gmail DOT com
@@ -63,17 +63,28 @@ warnings.filterwarnings("ignore", category=UserWarning)
 #------------------------------------------------------------------------------
 
 #------------------------------------------------------------------------------
-# EXTRACT TARBALL IF df.csv IS COMPRESSED:
+# EXTRACT TARBALL IF df_temp.csv AND df_anom.csv IS COMPRESSED:
 #------------------------------------------------------------------------------
 
-filename = Path("df.csv")
+filename = Path("df_temp.csv")
 if not filename.is_file():
-    print('Uncompressing df.csv from tarball ...')
-    #tar -xzvf df.tar.gz
-    #tar -xjvf df.tar.bz2
-    #filename = "df.tar.gz"
+    print('Uncompressing df_temp.csv from tarball ...')
+    #tar -xzvf df_temp.tar.gz
+    #tar -xjvf df_temp.tar.bz2
+    #filename = "df_temp.tar.gz"
     #subprocess.Popen(['tar', '-xzvf', filename])
-    filename = "df.tar.bz2"
+    filename = "df_temp.tar.bz2"
+    subprocess.Popen(['tar', '-xjvf', filename])
+    time.sleep(5) # pause 5 seconds to give tar extract time to complete prior to attempting pandas read_csv
+
+filename = Path("df_anom.csv")
+if not filename.is_file():
+    print('Uncompressing df_anom.csv from tarball ...')
+    #tar -xzvf df_anom.tar.gz
+    #tar -xjvf df_anom.tar.bz2
+    #filename = "df_anom.tar.gz"
+    #subprocess.Popen(['tar', '-xzvf', filename])
+    filename = "df_anom.tar.bz2"
     subprocess.Popen(['tar', '-xjvf', filename])
     time.sleep(5) # pause 5 seconds to give tar extract time to complete prior to attempting pandas read_csv
 
@@ -82,10 +93,12 @@ if not filename.is_file():
 #------------------------------------------------------------------------------
 fontsize = 12
 
-df = pd.read_csv('df.csv', index_col=0)
-stationlon = df['stationlon']
-stationlat = df['stationlat']
-stationcode = df['stationcode'].unique()
+df_temp = pd.read_csv('df_temp.csv', index_col=0)
+df_anom = pd.read_csv('df_anom.csv', index_col=0)
+df_norm = pd.read_csv('df_norm.csv', index_col=0)
+stationlon = df_temp['stationlon']
+stationlat = df_temp['stationlat']
+stationcode = df_temp['stationcode'].unique()
 
 opts = [{'label' : stationcode[i], 'value' : i} for i in range(len(stationcode))]
 
@@ -103,7 +116,7 @@ app.config.suppress_callback_exceptions = True
 app.layout = html.Div(children=[
             
 # ------------
-    html.H1(children='CRUTEM5-py',            
+    html.H1(children='GloSAT-py',            
             style={'padding' : '10px', 'width': '100%', 'display': 'inline-block'},
     ),
 # ------------
@@ -130,7 +143,7 @@ app.layout = html.Div(children=[
                 html.Br(),
 #                html.Label(['Dataset: ', html.A('CRUTEM5.1 v=prelim01', href='https://catalogue.ceda.ac.uk/uuid/eeabb5e1ff2140f48e76ea1ffda6bb48'), ' by ', html.A('UEA-CRU, UEA-NCAS, MO-HC', href='https://crudata.uea.ac.uk/cru/data/temperature/')]),            
 #                html.Label(['Dataviz: ', html.A('Github', href='https://github.com/patternizer/glosat-py'), ' by ', html.A('patternizer', href='https://patternizer.github.io')]),            
-                html.Label(['Dataset: ', html.A('CRUTEM5.1 prelim01 ', href='https://catalogue.ceda.ac.uk/uuid/eeabb5e1ff2140f48e76ea1ffda6bb48')]),
+                html.Label(['Dataset: GloSATp01']),
                 html.Br(),
                 html.Label(['Dataviz: ', html.A('Github', href='https://github.com/patternizer/glosat-py')]),            
             ],
@@ -184,11 +197,11 @@ def update_station_info(value):
     Display station info
     """
 
-    code = df[df['stationcode']==stationcode[value]]['stationcode'].iloc[0]
-    lat = df[df['stationcode']==stationcode[value]]['stationlat'].iloc[0]
-    lon = df[df['stationcode']==stationcode[value]]['stationlon'].iloc[0]
-    station = df[df['stationcode']==stationcode[value]]['stationname'].iloc[0]
-    country = df[df['stationcode']==stationcode[value]]['stationcountry'].iloc[0]
+    code = df_temp[df_temp['stationcode']==stationcode[value]]['stationcode'].iloc[0]
+    lat = df_temp[df_temp['stationcode']==stationcode[value]]['stationlat'].iloc[0]
+    lon = df_temp[df_temp['stationcode']==stationcode[value]]['stationlon'].iloc[0]
+    station = df_temp[df_temp['stationcode']==stationcode[value]]['stationname'].iloc[0]
+    country = df_temp[df_temp['stationcode']==stationcode[value]]['stationcountry'].iloc[0]
                                   
     data = [
         go.Table(
@@ -207,7 +220,7 @@ def update_station_info(value):
                 align='left')
         ),
     ]
-    layout = go.Layout(  height=140, width=380, margin=dict(r=10, l=0, b=0, t=0))
+    layout = go.Layout(  height=140, width=400, margin=dict(r=10, l=0, b=0, t=0))
 
     return {'data': data, 'layout':layout} 
 
@@ -222,7 +235,7 @@ def update_plot_timeseries(value):
     Plot station timeseries
     """
 
-    da = df[df['stationcode']==stationcode[value]].iloc[:,range(0,13)]
+    da = df_anom[df_anom['stationcode']==stationcode[value]].iloc[:,range(0,13)]
     ts = []    
     for i in range(len(da)):            
         monthly = da.iloc[i,1:]
@@ -239,7 +252,7 @@ def update_plot_timeseries(value):
     t = pd.date_range(start=str(da['year'].iloc[0]), periods=len(ts), freq='M')     
     t_yearly = pd.date_range(start=str(da['year'].iloc[0]), periods=len(ts_yearly), freq='A')   
 
-    Y = df[df['stationcode']==stationcode[value]].iloc[:,range(1,13)].T
+    Y = df_anom[df_anom['stationcode']==stationcode[value]].iloc[:,range(1,13)].T
     n = len(Y.T)            
     colors = cmocean.cm.balance(np.linspace(0.05,0.95,n)) 
     hexcolors = [ "#{:02x}{:02x}{:02x}".format(int(colors[i][0]*255),int(colors[i][1]*255),int(colors[i][2]*255)) for i in range(len(colors)) ]
@@ -288,8 +301,8 @@ def update_plot_climatology(value):
     Plot station climatology
     """
 
-    X = df[df['stationcode']==stationcode[value]].iloc[:,0]
-    Y = df[df['stationcode']==stationcode[value]].iloc[:,range(1,13)].T
+    X = df_temp[df_temp['stationcode']==stationcode[value]].iloc[:,0]
+    Y = df_temp[df_temp['stationcode']==stationcode[value]].iloc[:,range(1,13)].T
 
     n = len(Y.T)            
     colors = cmocean.cm.balance(np.linspace(0.05,0.95,n)) 
@@ -308,7 +321,7 @@ def update_plot_climatology(value):
     fig = go.Figure(data)
     fig.update_layout(
         xaxis_title = {'text': 'Month'},
-        yaxis_title = {'text': 'Monthly temperature anomaly, °C'},
+        yaxis_title = {'text': 'Monthly temperature, °C'},
 #        title = {'text': 'Seasonal cycle', 'x':0.5, 'y':0.925, 'xanchor': 'center', 'yanchor': 'top'}
     )
     fig.update_layout(height=300, width=600, margin={"r":0,"t":0,"l":10,"b":0})
@@ -325,18 +338,18 @@ def update_plot_worldmap(value):
     Plot station location on world map
     """
 
-    Y = df[df['stationcode']==stationcode[value]].iloc[:,range(1,13)].T
+    Y = df_temp[df_temp['stationcode']==stationcode[value]].iloc[:,range(1,13)].T
     n = len(Y.T)            
     
     colors = cmocean.cm.balance(np.linspace(0.05,0.95,n)) 
     hexcolors = [ "#{:02x}{:02x}{:02x}".format(int(colors[i][0]*255),int(colors[i][1]*255),int(colors[i][2]*255)) for i in range(len(colors)) ]
     cmap = hexcolors
 
-    lat = [df[df['stationcode']==stationcode[value]]['stationlat'].iloc[0]]
-    lon = [df[df['stationcode']==stationcode[value]]['stationlon'].iloc[0]]
+    lat = [df_temp[df_temp['stationcode']==stationcode[value]]['stationlat'].iloc[0]]
+    lon = [df_temp[df_temp['stationcode']==stationcode[value]]['stationlon'].iloc[0]]
     var = []
-    station = df[df['stationcode']==stationcode[value]]['stationcode'].iloc[0]
-    data = df[df['stationcode']==stationcode[value]].iloc[0]
+    station = df_temp[df_temp['stationcode']==stationcode[value]]['stationcode'].iloc[0]
+    data = df_temp[df_temp['stationcode']==stationcode[value]].iloc[0]
     
 #    fig = go.Figure(go.Densitymapbox(lat=lat, lon=lon, z=var, radius=10))
     fig = go.Figure(px.scatter_mapbox(lat=lat, lon=lon, color_discrete_sequence=["darkred"], zoom=1))
