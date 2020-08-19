@@ -4,8 +4,8 @@
 #------------------------------------------------------------------------------
 # PROGRAM: plot-prelim-stations.py
 #------------------------------------------------------------------------------
-# Version 0.11
-# 15 August, 2020
+# Version 0.12
+# 18 August, 2020
 # Michael Taylor
 # https://patternizer.github.io
 # patternizer AT gmail DOT com
@@ -19,6 +19,7 @@ import numpy.ma as ma
 from mod import Mod
 import itertools
 import pandas as pd
+import klib
 # Plotting libraries:
 import matplotlib
 import matplotlib.pyplot as plt; plt.close('all')
@@ -68,16 +69,19 @@ lat_start = -90;  lat_end = 90
 lon_start = -180; lon_end = 180
 station_start=0;  station_end=10
 
-load_df = False
-plot_data_coverage = True
+load_df_temp = True
+load_df_anom = True
+load_df_norm = True
+plot_klib = True
+
+plot_gap_analysis = False
 plot_temporal_coverage = False
 plot_spatial_coverage = False
 plot_station_timeseres = False
-plot_monthly_climatology = False
-plot_locations = False
-plot_delta_cc = False
+plot_station_climatology = False
+plot_station_locations = False
+plot_delta_cc = True
 delta_cc_20C = True    
-normalize_timeseries = False
 
 #------------------------------------------------------------------------------
 # METHODS
@@ -86,12 +90,13 @@ normalize_timeseries = False
 def load_dataframe(filename_txt):
     
     #------------------------------------------------------------------------------
-    # I/O: stat4.CRUTEM5.1prelim01.1721-2019.txt (text dump from CDF4)
+    # I/O: filename.txt (text version)
     #------------------------------------------------------------------------------
 
     # load .txt file (comma separated) into pandas dataframe
-    
-    filename_txt = 'stat4.CRUTEM5.1prelim01.1721-2019.txt'
+
+#    filename_txt = 'stat4.CRUTEM5.1prelim01.1721-2019.txt'    
+#    filename_txt = 'GloSATprelim01.1721-2019.txt'
     
     yearlist = []
     monthlist = []
@@ -227,8 +232,7 @@ def load_dataframe(filename_txt):
 
     df['year'].replace(-999, np.nan, inplace=True) 
  
-    for j in range(1,13):
-    
+    for j in range(1,13):    
         df[df.columns[j]].replace(-999, np.nan, inplace=True)
 
     df['stationlat'].replace(-999, np.nan, inplace=True) 
@@ -237,8 +241,7 @@ def load_dataframe(filename_txt):
     df['stationfirstyear'].replace(-999, np.nan, inplace=True) 
     df['stationlastyear'].replace(-999, np.nan, inplace=True) 
     df['stationsource'].replace(-999, np.nan, inplace=True) 
-    df['stationfirstreliable'].replace(-999, np.nan, inplace=True) 
-
+    df['stationfirstreliable'].replace(-999, np.nan, inplace=True)    
     df.to_csv('df.csv')
     
     return df
@@ -274,100 +277,176 @@ def plot_stations(lon,lat,mapfigstr,maptitlestr):
 # LOAD DATAFRAME
 #------------------------------------------------------------------------------
 
-if load_df == True:
+if load_df_temp == True:
 
     #------------------------------------------------------------------------------
     # EXTRACT TARBALL IF df.csv IS COMPRESSED:
     #------------------------------------------------------------------------------
 
-    filename = Path("df.csv")
+    filename = Path("df_temp.csv")
     if not filename.is_file():
+
         print('Uncompressing df.csv from tarball ...')
-        #filename = "df.tar.gz"
-        #subprocess.Popen(['tar', '-xzvf', filename]) # = tar -xzvf df.tar.gz
-        filename = "df.tar.bz2"
-        subprocess.Popen(['tar', '-xjvf', filename])  # = tar -xjvf df.tar.bz2
+
+        #filename = "df_temp.tar.gz"
+        #subprocess.Popen(['tar', '-xzvf', filename]) # = tar -xzvf df_temp.tar.gz
+        filename = "df_temp.tar.bz2"
+        subprocess.Popen(['tar', '-xjvf', filename])  # = tar -xjvf df_temp.tar.bz2
         time.sleep(5) # pause 5 seconds to give tar extract time to complete prior to attempting pandas read_csv
 
-    df = pd.read_csv('df.csv', index_col=0)
+    print('loading temperatures ...')
+
+    df_temp = pd.read_csv('df_temp.csv', index_col=0)
 
 else:    
     
     #------------------------------------------------------------------------------
-    # I/O: stat4.CRUTEM5.1prelim01.1721-2019.txt (text dump from CDF4)
+    # I/O: GloSATprelim01.1721-2019.txt (text version)
     #------------------------------------------------------------------------------
 
-    # load .txt file (line by line) into pandas dataframe
+    print('read GloSATprelim01.1721-2019.txt ...')
 
-    filename_txt = 'stat4.CRUTEM5.1prelim01.1721-2019.txt'
+    filename_txt = 'GloSATprelim01.1721-2019.txt'
     df = load_dataframe(filename_txt)
 
     #------------------------------------------------------------------------------
     # APPLY SCALE FACTORS
     #------------------------------------------------------------------------------
     
+    print('apply scale factors ...')
+
     df = pd.read_csv('df.csv', index_col=0)
     df['stationlat'] = df['stationlat']/10.0
     df['stationlon'] = df['stationlon']/10.0
     for j in range(1,13):
-        df[df.columns[j]] = df[df.columns[j]]/100.0
+        df[df.columns[j]] = df[df.columns[j]]/10.0
 
     #------------------------------------------------------------------------------
     # CONVERT LONGITUDE FROM +W TO +E
     #------------------------------------------------------------------------------
+
+    print('convert longitudes ...')
+
     df['stationlon'] = -df['stationlon']        
 
-    #------------------------------------------------------------------------------
-    # SAVE DATAFRAME
-    #------------------------------------------------------------------------------
-    df.to_csv('df.csv')
+    print('save temperatures ...')
 
-    #------------------------------------------------------------------------------
-    # NORMALIZE TIMESERIES
-    #------------------------------------------------------------------------------
+    df_temp = df.copy()
+    df_temp.to_csv('df_temp.csv')
+
+#------------------------------------------------------------------------------
+# CALCULATE 1961-1990 baselines and anomalies
+#------------------------------------------------------------------------------
+
+if load_df_anom == True:
+
+    print('loading anomalies ...')
+
+    df_anom = pd.read_csv('df_anom.csv', index_col=0)
+
+else:
     
-    if normalize_timeseries == True:
+    print('calculate baselines and anomalies ...')
+
+    df_anom = df_temp.copy()
+    for i in range(len(df_anom['stationcode'].unique())):
+        da = df_anom[df_anom['stationcode']==df_anom['stationcode'].unique()[i]]
+        for j in range(1,13):
+            baseline = np.nanmean(np.array(da[(da['year']>=1961) & (da['year']<=1990)].iloc[:,j]).ravel())
+            df_anom.loc[da.index.tolist(), str(j)] = da[str(j)]-baseline            
+
+    print('save anomalies ...')
+
+    df_anom.to_csv('df_anom.csv')
+
+#------------------------------------------------------------------------------
+# NORMALIZE TIMESERIES
+#------------------------------------------------------------------------------
     
-        # Adjust station timeseries using normalisation for eacg month
+if load_df_norm == True:
+
+    print('loading normalized anomalies ...')
+
+    df_norm = pd.read_csv('df_norm.csv', index_col=0)
+    
+else:
+
+    print('normalize anomalies ...')
+
+    # Adjust anomaly timeseries using normalisation for each month
         
-        df_norm = df.copy()
-#        df_norm['tmean']=np.nan
-#        df_norm['tsd']=np.nan
-#        for i in range(len(df_norm)): 
-#            if df_norm.iloc[i,1:13].isnull().sum() > 0:                
-#                df_norm['tmean'][i] = np.nan
-#                df_norm['tsd'][i] = np.nan
-#            else:                
-#                tmean = np.nanmean(np.array(df_norm.iloc[i,1:13]).ravel())
-#                tsd = np.nanstd(np.array(df_norm.iloc[i,1:13]).ravel())
-#                df_norm['tmean'][i] = tmean
-#                df_norm['tsd'][i] = tsd
-              
-        for i in range(len(df_norm['stationcode'].unique())):
-            
-            da = df_norm[df_norm['stationcode']==df_norm['stationcode'].unique()[i]]
-            for j in range(1,13):
-                df_norm.loc[da.index.tolist(), str(j)] = (da[str(j)]-da[str(j)].dropna().mean())/da[str(j)].dropna().std()
+    df_norm = df_anom.copy()              
+    for i in range(len(df_norm['stationcode'].unique())):            
+        da = df_norm[df_norm['stationcode']==df_norm['stationcode'].unique()[i]]
+        for j in range(1,13):
+            df_norm.loc[da.index.tolist(), str(j)] = (da[str(j)]-da[str(j)].dropna().mean())/da[str(j)].dropna().std()
 
-        df_norm.to_csv('df_norm.csv')
+    print('save normalized anomalies ...')
 
+    df_norm.to_csv('df_norm.csv')
+
+#------------------------------------------------------------------------------
+# KLIB: data summary:
+# https://github.com/akanz1/klib    
+#------------------------------------------------------------------------------
+
+if plot_klib == True:
+
+    print('plot klib temperature summaries ...')
+
+    # PLOT: missing values
+
+    fig = plt.figure(1,figsize=(15,10))
+    klib.missingval_plot(df_temp)
+    plt.savefig('klib-dataset-summary.png')
+    plt.close(fig)
+
+    # display column count and data types
+    
+    print(df.info(memory_usage='deep'))
+    df_temp_cleaned = klib.data_cleaning(df_temp)
+    print(df_temp_cleaned.info(memory_usage='deep'))
+
+    # PLOT: correlations (and separated (pos)itive and (neg)ative correlations
+    
+    fig = plt.figure(1,figsize=(15,10))
+#    klib.corr_plot(df_temp_cleaned, split='pos', annot=False)
+#    klib.corr_plot(df_temp_cleaned, split='neg', annot=False)
+#    klib.corr_plot(df_temp_cleaned, target='year')
+    klib.corr_plot(df_temp_cleaned, annot=False)
+    plt.savefig('klib-correlation.png')
+    plt.close(fig)
+
+    # PLOT: distributions
+
+#    fig = plt.figure(1,figsize=(15,10))
+#    klib.dist_plot(df_temp_cleaned)    
+#    plt.savefig('klib-distribution.png')
+#    plt.close(fig)
+
+    # PLOT: categoricals
+
+#    fig = plt.figure(1,figsize=(15,10))
+#    klib.cat_plot(df_temp_cleaned, top=10, bottom=10)    
+#    plt.savefig('klib-categorical.png')
+#    plt.close(fig)
+    
 #------------------------------------------------------------------------------
 # PLOT: station coverage - thanks to Kate-Willett (UKMO) for spec. humidity code:
 # https://github.com/Kate-Willett
 #------------------------------------------------------------------------------
 
-if plot_data_coverage == True:
+if plot_gap_analysis == True:
 
-#   plot timeseries for each month of year:
+    # PLOT: anomaly timeseries for each month of year:
     
     fig = plt.figure(1,figsize=(15,10))
-#    plt.plot(df.groupby('year').mean().iloc[:,0:12])
     for i in range(0,12):
         plt.plot(df.groupby('year').mean().iloc[:,i], label='Month=' + str(i+1))
     plt.legend(fontsize=fontsize/2)
     plt.tick_params(axis='both', which='major', labelsize=fontsize)    
     plt.xlabel('Year', fontsize=fontsize)
-    plt.ylabel('Annual mean anomaly', fontsize=fontsize)
+    plr.ylabel("Annual mean anomaly, " + "$\mathrm{\degree}$C", fontsize=fontsize)
     plt.savefig('monthly-anomaly-timeseries.png')
     plt.close(fig)
                             
@@ -425,8 +504,16 @@ if plot_data_coverage == True:
     # Contruct timeseries of yearly station count
 
     station_yearly_count = df.groupby('year')['stationcode'].count()
-    t_station_yearly_count = pd.date_range(start=str(df['year'].min()), periods=len(global_yearly_mean), freq='A')
+    t_station_yearly_count = pd.date_range(start=str(df['year'].min()), periods=len(station_yearly_count), freq='A')
 
+    fig = plt.figure(1,figsize=(15,10))
+    plt.plot(t_station_yearly_count, station_yearly_count)
+    plt.tick_params(axis='both', which='major', labelsize=fontsize)    
+    plt.xlabel('Year', fontsize=fontsize)
+    plt.ylabel('Annual station count', fontsize=fontsize)
+    plt.savefig('gap_analysis-annual-station-count')
+    plt.close(fig)
+    
     # Contruct timeseries of yearly mean and s.d.
 
     global_yearly_mean = []
@@ -437,6 +524,14 @@ if plot_data_coverage == True:
         global_yearly_mean.append(yearly_mean)
         global_yearly_std.append(yearly_std)
     t_yearly = pd.date_range(start=str(df['year'].min()), periods=len(global_yearly_mean), freq='A')
+
+    fig = plt.figure(1,figsize=(15,10))
+    plt.plot(t_yearly, global_yearly_mean)
+    plt.tick_params(axis='both', which='major', labelsize=fontsize)    
+    plt.xlabel('Year', fontsize=fontsize)
+    plt.ylabel('Annual mean anomaly', fontsize=fontsize)
+    plt.savefig('gap_analysis-annual-mean')
+    plt.close(fig)
 
     # Contruct timeseries of monthly mean and s.d.
 
@@ -450,19 +545,27 @@ if plot_data_coverage == True:
             global_monthly_std.append(monthly_std)
     t_monthly = pd.date_range(start=str(df['year'].min()), periods=len(global_monthly_mean), freq='M')
 
+    fig = plt.figure(1,figsize=(15,10))
+    plt.plot(t_monthly, global_monthly_mean)
+    plt.tick_params(axis='both', which='major', labelsize=fontsize)    
+    plt.xlabel('Year', fontsize=fontsize)
+    plt.ylabel('Monthly mean anomaly', fontsize=fontsize)
+    plt.savefig('gap_analysis-monthly-mean')
+    plt.close(fig)
+
     # PLOT: timeseries of monthly obs per station
 
-#    figstr = 'crutem5-gaps-plus-mean-anomaly.png'
-#    titlestr = 'CRUTEM5: Data Coverage & Annual temperature anomaly'    
-    figstr = 'crutem5-gaps-plus-yearly-station-count.png'
-    titlestr = 'CRUTEM5: Data Coverage & Annual station count'    
+    figstr = 'gap-analysis-plus-annual-mean-anomaly.png'
+    titlestr = 'GloSATprelim01: Data coverage & annual mean temperature anomaly (from 1961-1990)'    
+#    figstr = 'gap-analysis-plus-annual-station-count.png'
+#    titlestr = 'GloSATprelim01: Data coverage & annual station count'    
     xstr = 'Year'
     y1str = 'Station ID'
-#    y2str = 'Annual mean'
-    y2str = 'Annual station count'
+    y2str = "Annual mean anomaly, " + "$\mathrm{\degree}$C"
+#    y2str = 'Annual station count'
             
     fig = plt.figure(1,figsize=(15,10))
-    plt.clf()	# needs to be called after figure!!! (create the figure, then clear the plot space)
+    plt.clf() # needs to be called after figure!!! (create the figure, then clear the plot space)
     ax1=plt.subplot(1,1,1)
     ax1.tick_params(axis='both', which='major', labelsize=fontsize)
         
@@ -484,8 +587,8 @@ if plot_data_coverage == True:
     ax2.set_ylabel(y2str,size=fontsize)
     ax2.tick_params(axis='both', which='major', labelsize=fontsize)
     
-#    ax2.plot(t_yearly, global_yearly_mean, 'black', linewidth=2)
-    ax2.plot(t_station_yearly_count, station_yearly_count, 'black', linewidth=2)
+    ax2.plot(t_yearly, global_yearly_mean, 'black', linewidth=2)
+#    ax2.plot(t_station_yearly_count, station_yearly_count, 'black', linewidth=2)
 
     plt.savefig(figstr)
     plt.close(fig)
@@ -758,11 +861,13 @@ if plot_delta_cc == True:
 
 if plot_temporal_coverage == True:
     
+    print('plot_temporal_coverage...')
+
 #    coverage per month:    
 #    plt.plot(df.groupby('year').sum().iloc[:,0:12])
     
     #------------------------------------------------------------------------------
-    # PLOT: histogram of temporal coverage: to 1900
+    # PLOT: temporal coverage: to 1900
     #------------------------------------------------------------------------------
              
     nbins = 1900 - df['year'].min() + 1
@@ -773,8 +878,8 @@ if plot_temporal_coverage == True:
     Q2 = pd.Series(bins).iloc[(pd.Series(np.cumsum(counts))-np.sum(counts)*0.50).abs().argsort()[:1]].values[0]
     Q3 = pd.Series(bins).iloc[(pd.Series(np.cumsum(counts))-np.sum(counts)*0.75).abs().argsort()[:1]].values[0]
              
-    figstr = 'crutem5-histogram-1900.png'
-    titlestr = 'Yearly coverage: CRUTEM5 (to 1900): N=' + "{0:.0f}".format(np.sum(counts))
+    figstr = 'temporal-coverage-1900.png'
+    titlestr = 'Yearly coverage: GloSATprelim01 (to 1900): N=' + "{0:.0f}".format(np.sum(counts))
 
     fig, ax = plt.subplots(figsize=(15,10))          
 #    plt.hist(df[df['year']<=1900]['year'], bins=nbins, density=False, facecolor='grey', alpha=0.5, label='KDE')
@@ -792,7 +897,7 @@ if plot_temporal_coverage == True:
     plt.close(fig)
 
     #------------------------------------------------------------------------------
-    # PLOT: histogram of temporal coverage: full record
+    # PLOT: temporal coverage: full record
     #------------------------------------------------------------------------------
 
     nbins = df['year'].max() - df['year'].min() + 1
@@ -802,8 +907,8 @@ if plot_temporal_coverage == True:
     Q2 = pd.Series(bins).iloc[(pd.Series(np.cumsum(counts))-np.sum(counts)*0.50).abs().argsort()[:1]].values[0]
     Q3 = pd.Series(bins).iloc[(pd.Series(np.cumsum(counts))-np.sum(counts)*0.75).abs().argsort()[:1]].values[0]
              
-    figstr = 'crutem5-histogram-full.png'
-    titlestr = 'Yearly coverage: CRUTEM5 (full): N=' + "{0:.0f}".format(np.sum(counts)) 
+    figstr = 'temporal-coverage-full.png'
+    titlestr = 'Yearly coverage: GloSATprelim01 (full): N=' + "{0:.0f}".format(np.sum(counts)) 
 
     fig, ax = plt.subplots(figsize=(15,10))          
     plt.fill_between(bins, counts, step="pre", facecolor='lightgrey', alpha=1.0)
@@ -822,8 +927,10 @@ if plot_temporal_coverage == True:
 if plot_spatial_coverage == True:
     
     #------------------------------------------------------------------------------
-    # PLOT: histogram of latitudinal coverage
+    # PLOT: latitudinal coverage
     #------------------------------------------------------------------------------
+
+    print('plot_spatial_coverage: latitudinal ...')
 
     nbins = lat_end - lat_start + 1
     bins = np.linspace(lat_start, lat_end, nbins) 
@@ -832,8 +939,8 @@ if plot_spatial_coverage == True:
     Q2 = pd.Series(bins).iloc[(pd.Series(np.cumsum(counts))-np.sum(counts)*0.50).abs().argsort()[:1]].values[0]
     Q3 = pd.Series(bins).iloc[(pd.Series(np.cumsum(counts))-np.sum(counts)*0.75).abs().argsort()[:1]].values[0]
 
-    figstr = 'crutem5-histogram-lat-full.png'
-    titlestr = 'Latitudinal coverage: CRUTEM5 (full)'
+    figstr = 'latitudinal-coverage-full.png'
+    titlestr = 'Latitudinal coverage: GloSATprelim01 (full)'
 
     fig, ax = plt.subplots(figsize=(15,10))          
     plt.fill_between(bins, counts, step="pre", facecolor='lightgrey', alpha=1.0)
@@ -850,8 +957,10 @@ if plot_spatial_coverage == True:
     plt.close(fig)
 
     #------------------------------------------------------------------------------
-    # PLOT: histogram of longitudinal coverage
+    # PLOT: longitudinal coverage
     #------------------------------------------------------------------------------
+
+    print('plot_spatial_coverage: longitudinal ...')
 
     nbins = lon_end - lon_start + 1
     bins = np.linspace(lon_start, lon_end, nbins) 
@@ -860,8 +969,8 @@ if plot_spatial_coverage == True:
     Q2 = pd.Series(bins).iloc[(pd.Series(np.cumsum(counts))-np.sum(counts)*0.50).abs().argsort()[:1]].values[0]
     Q3 = pd.Series(bins).iloc[(pd.Series(np.cumsum(counts))-np.sum(counts)*0.75).abs().argsort()[:1]].values[0]
 
-    figstr = 'crutem5-histogram-lon-full.png'
-    titlestr = 'Longitudinal coverage: CRUTEM5 (full)'
+    figstr = 'longitudinal-coverage-full.png'
+    titlestr = 'Longitudinal coverage: GloSATprelim01 (full)'
 
     fig, ax = plt.subplots(figsize=(15,10))          
     plt.fill_between(bins, counts, step="pre", facecolor='lightgrey', alpha=1.0)
@@ -882,11 +991,14 @@ if plot_station_timeseres == True:
     #------------------------------------------------------------------------------
     # PLOT: timeseries per station
     #------------------------------------------------------------------------------
+
+    print('plot_station_timeseries ...')
         
     #for j in range(len(np.unique(stationcode))):
     for j in range(station_start,station_end):
     
         # form station timeseries
+
         da = df[df['stationcode']==df['stationcode'].unique()[j]].iloc[:,range(0,13)]
     #   da_melt = da.melt(id_vars='year').sort_values(by=['year']).reset_index()
 
@@ -930,11 +1042,13 @@ if plot_station_timeseres == True:
         plt.savefig(figstr)
         plt.close(fig)
 
-if plot_monthly_climatology == True:
+if plot_station_climatology == True:
     
     #------------------------------------------------------------------------------
     # PLOT: seasonal cycle per station
     #------------------------------------------------------------------------------
+
+    print('plot_station_climatology ...')
         
     #for j in range(len(np.unique(stationcode))):        
     for j in range(station_start,station_end):
@@ -1027,11 +1141,13 @@ if plot_monthly_climatology == True:
 #        plt.savefig(figstr)
 #        plt.close(fig)
 
-if plot_locations == True:
+if plot_station_locations == True:
     
     #------------------------------------------------------------------------------
     # PLOT: stations on world map
     #------------------------------------------------------------------------------
+
+    print('plot_station_locations ...')
 
     lon = df['stationlon']
     lat = df['stationlat']
