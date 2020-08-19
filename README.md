@@ -2,10 +2,10 @@
 
 Python dataviz tools for reading and plotting [GloSAT](https://www.glosat.org) datasets:
 
-* python reader for CRUTEM station database (.txt version)
-* plot CRUTEM station level monthly timeseries
-* plot CRUTEM station level monthly climatology
-* plot CRUTEM station locations on world map
+* python reader for GloSATp01 station database (.txt version)
+* plot GloSATp01 station level monthly timeseries
+* plot GloSATp01 station level monthly climatology
+* plot GloSATp01 station locations on world map
 * plot mean annual anomaly climate stripes (1900-2019) from 1961-1990 baseline
 * plot global mean annual anomaly maps
 
@@ -13,10 +13,10 @@ Python dataviz tools for reading and plotting [GloSAT](https://www.glosat.org) d
 
 ## Contents
 
-* `load-stations.py` - python reader for CRUTEM database
+* `load-stations.py` - python reader for GloSATp01 database
 * `plot-prelim-stripes.py` - script to plot global, NH and SH timeseries and climate stripes
 * `plot-prelim-maps.py` - script to plot global maps of mean annual temperature anomaly per year 
-* `plot-prelim-stations.py` - script to plot station level timeseries
+* `plot-prelim-stations.py` - script to calculate baselines, anomalies and plot station level timeseries
 * `app.py` - Plotly Python Reactive Dash app
 
 The first step is to clone the latest glosat-py code and step into the check out directory: 
@@ -41,7 +41,7 @@ Run with:
 
 ## License
 
-The code is distributed under terms and conditions of the [Unlicense](https://github.com/patternizer/glosat-py/blob/master/LICENSE).
+The code is distributed under terms and conditions of the [Open Government License](http://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/).
 
 ## Contact information
 
