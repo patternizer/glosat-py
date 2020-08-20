@@ -103,8 +103,8 @@ opts = [{'label' : stationcode[i], 'value' : i} for i in range(len(stationcode))
 
 server = Flask(__name__)
 server.secret_key = os.environ.get('secret_key', str(randint(0, 1000000)))
-external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
-#external_stylesheets = [dbc.themes.BOOTSTRAP]
+#external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
+external_stylesheets = [dbc.themes.BOOTSTRAP]
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets, server=server)
 app.config.suppress_callback_exceptions = True
 
