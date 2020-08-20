@@ -3,7 +3,7 @@
 #------------------------------------------------------------------------------
 # PROGRAM: app.py
 #------------------------------------------------------------------------------
-# Version 0.5
+# Version 0.6
 # 19 August, 2020
 # Michael Taylor
 # https://patternizer.github.io
@@ -13,10 +13,12 @@
 #------------------------------------------------------------------------------
 # IMPORT PYTHON LIBRARIES
 #------------------------------------------------------------------------------
+# Numerics and dataframe libraries:
 import numpy as np
 import numpy.ma as ma
 from mod import Mod
 import pandas as pd
+import pickle
 # Plotting libraries:
 import matplotlib
 import matplotlib.pyplot as plt; plt.close('all')
@@ -66,36 +68,29 @@ warnings.filterwarnings("ignore", category=UserWarning)
 # EXTRACT TARBALL IF df_temp.csv AND df_anom.csv IS COMPRESSED:
 #------------------------------------------------------------------------------
 
-filename = Path("df_temp.csv")
-if not filename.is_file():
-    print('Uncompressing df_temp.csv from tarball ...')
-    #tar -xzvf df_temp.tar.gz
-    #tar -xjvf df_temp.tar.bz2
-    #filename = "df_temp.tar.gz"
-    #subprocess.Popen(['tar', '-xzvf', filename])
-    filename = "df_temp.tar.bz2"
-    subprocess.Popen(['tar', '-xjvf', filename])
-    time.sleep(5) # pause 5 seconds to give tar extract time to complete prior to attempting pandas read_csv
+#filename = Path("df_temp.csv")
+#if not filename.is_file():
+#    print('Uncompressing df_temp.csv from tarball ...')
+#    filename = "df_temp.tar.bz2"
+#    subprocess.Popen(['tar', '-xjvf', filename])
+#    time.sleep(5) # pause 5 seconds to give tar extract time to complete prior to attempting pandas read_csv
 
-filename = Path("df_anom.csv")
-if not filename.is_file():
-    print('Uncompressing df_anom.csv from tarball ...')
-    #tar -xzvf df_anom.tar.gz
-    #tar -xjvf df_anom.tar.bz2
-    #filename = "df_anom.tar.gz"
-    #subprocess.Popen(['tar', '-xzvf', filename])
-    filename = "df_anom.tar.bz2"
-    subprocess.Popen(['tar', '-xjvf', filename])
-    time.sleep(5) # pause 5 seconds to give tar extract time to complete prior to attempting pandas read_csv
+#filename = Path("df_anom.csv")
+#if not filename.is_file():
+#    print('Uncompressing df_anom.csv from tarball ...')
+#    filename = "df_anom.tar.bz2"
+#    subprocess.Popen(['tar', '-xjvf', filename])
+#    time.sleep(5) # pause 5 seconds to give tar extract time to complete prior to attempting pandas read_csv
 
 #------------------------------------------------------------------------------
 # SETTINGS: 
 #------------------------------------------------------------------------------
 fontsize = 12
 
-df_temp = pd.read_csv('df_temp.csv', index_col=0)
-df_anom = pd.read_csv('df_anom.csv', index_col=0)
-df_norm = pd.read_csv('df_norm.csv', index_col=0)
+#df_temp = pd.read_csv('df_temp.csv', index_col=0)
+#df_anom = pd.read_csv('df_anom.csv', index_col=0)
+df_temp = pd.read_pickle('df_temp.pkl', compression='bz2')
+df_anom = pd.read_pickle('df_anom.pkl', compression='bz2')
 stationlon = df_temp['stationlon']
 stationlat = df_temp['stationlat']
 stationcode = df_temp['stationcode'].unique()
@@ -244,8 +239,12 @@ def update_plot_timeseries(value):
     ts_yearly = []    
     ts_yearly_sd = []    
     for i in range(len(da)):            
-        yearly = np.nanmean(da.iloc[i,1:13])
-        yearly_sd = np.nanstd(da.iloc[i,1:13])
+        if len(da.iloc[i,1:]) > 0:
+            yearly = np.nanmean(da.iloc[i,1:])
+            yearly_sd = np.nanstd(da.iloc[i,1:])
+        else:
+            yearly = np.nan
+            yearly_sd = np.nan
         ts_yearly.append(yearly)    
         ts_yearly_sd.append(yearly_sd)    
     ts_yearly_sd = np.array(ts_yearly_sd)                    
