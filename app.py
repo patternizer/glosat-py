@@ -103,8 +103,8 @@ opts = [{'label' : stationcode[i], 'value' : i} for i in range(len(stationcode))
 
 server = Flask(__name__)
 server.secret_key = os.environ.get('secret_key', str(randint(0, 1000000)))
-#external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
-external_stylesheets = [dbc.themes.BOOTSTRAP]
+external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
+#external_stylesheets = [dbc.themes.BOOTSTRAP]
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets, server=server)
 app.config.suppress_callback_exceptions = True
 
@@ -239,12 +239,12 @@ def update_plot_timeseries(value):
     ts_yearly = []    
     ts_yearly_sd = []    
     for i in range(len(da)):            
-        if len(da.iloc[i,1:]) > 0:
-            yearly = np.nanmean(da.iloc[i,1:])
-            yearly_sd = np.nanstd(da.iloc[i,1:])
-        else:
+        if da.iloc[i,1:].isnull().any():
             yearly = np.nan
             yearly_sd = np.nan
+        else:
+            yearly = np.nanmean(da.iloc[i,1:])
+            yearly_sd = np.nanstd(da.iloc[i,1:])
         ts_yearly.append(yearly)    
         ts_yearly_sd.append(yearly_sd)    
     ts_yearly_sd = np.array(ts_yearly_sd)                    
