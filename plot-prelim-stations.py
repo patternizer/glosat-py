@@ -14,12 +14,14 @@
 #------------------------------------------------------------------------------
 # IMPORT PYTHON LIBRARIES
 #------------------------------------------------------------------------------
+# Dataframe libraries:
 import numpy as np
 import numpy.ma as ma
 from mod import Mod
 import itertools
 import pandas as pd
 import klib
+import pickle
 # Plotting libraries:
 import matplotlib
 import matplotlib.pyplot as plt; plt.close('all')
@@ -80,7 +82,7 @@ plot_spatial_coverage = False
 plot_station_timeseres = False
 plot_station_climatology = False
 plot_station_locations = False
-plot_delta_cc = True
+plot_delta_cc = False
 delta_cc_20C = True    
 
 #------------------------------------------------------------------------------
@@ -100,8 +102,6 @@ def load_dataframe(filename_txt):
     
     yearlist = []
     monthlist = []
-    stationheader = []
-
     stationcode = []
     stationlat = []
     stationlon = []
@@ -121,7 +121,6 @@ def load_dataframe(filename_txt):
         for line in f:   
             if len(line)>1: # ignore empty lines         
                 if (len(line.strip().split())!=13) | (len(line.split()[0])>4):   
-                    
                     # when line is station header extract info
                     #
                     # Station Header File:
@@ -138,7 +137,6 @@ def load_dataframe(filename_txt):
                     #    (ch. 70-73) First reliable year (generally the same as the first year)
                     #    (ch. 75-78) Unique index number (internal use)
                     #    (ch. 80-83) Index into the 5° x 5° gridcells (internal use) 
-                        
                     code = line[0:6]                    
                     lat = line[6:10]
                     lon = line[10:15]
@@ -150,15 +148,11 @@ def load_dataframe(filename_txt):
                     source = line[64:68]
                     firstreliable = line[68:72]
                     cruindex = line[72:77]
-                    gridcell = line[77:80]    
-                    
-                    header = line
-                            
+                    gridcell = line[77:80]                                                    
                 else:           
                     yearlist.append(int(line.strip().split()[0]))                                 
-                    monthlist.append(np.array(line.strip().split()[1:]).astype('int'))                                 
-                    stationheader.append(header)
-
+#                    monthlist.append(np.array(line.strip().split()[1:]).astype('int'))                                 
+                    monthlist.append(np.array(line.strip().split()[1:]))                                 
                     stationcode.append(code)
                     stationlat.append(lat)
                     stationlon.append(lon)
@@ -179,48 +173,53 @@ def load_dataframe(filename_txt):
     
     df = pd.DataFrame(columns=['year','1','2','3','4','5','6','7','8','9','10','11','12'])
     df['year'] = yearlist
-
     for j in range(1,13):
         df[df.columns[j]] = [ monthlist[i][j-1] for i in range(len(monthlist)) ]
-
-    df['stationcode'] = stationcode    
+    df['stationcode'] = stationcode
     df['stationlat'] = stationlat
     df['stationlon'] = stationlon
     df['stationelevation'] = stationelevation
     df['stationname'] = stationname
     df['stationcountry'] = stationcountry
-    df['stationfirstyear'] = stationfirstyear
-    df['stationlastyear'] = stationlastyear
-    df['stationsource'] = stationsource
-    df['stationfirstreliable'] = stationfirstreliable
-    df['stationcruindex'] = stationcruindex
-    df['stationgridcell'] = stationgridcell
+#    df['stationfirstyear'] = stationfirstyear
+#    df['stationlastyear'] = stationlastyear
+#    df['stationsource'] = stationsource
+#    df['stationfirstreliable'] = stationfirstreliable
+#    df['stationcruindex'] = stationcruindex
+#    df['stationgridcell'] = stationgridcell
 
     # trim strings
     
-    df['stationcode'] = [ str(df['stationcode'][i]).strip() for i in range(len(df)) ] 
+#    df['stationcode'] = [ str(df['stationcode'][i]).strip() for i in range(len(df)) ] 
+#    df['stationlat'] = [ str(df['stationlat'][i]).strip() for i in range(len(df)) ] 
+#    df['stationlon'] = [ str(df['stationlon'][i]).strip() for i in range(len(df)) ] 
+#    df['stationelevation'] = [ str(df['stationelevation'][i]).strip() for i in range(len(df)) ] 
     df['stationname'] = [ str(df['stationname'][i]).strip() for i in range(len(df)) ] 
     df['stationcountry'] = [ str(df['stationcountry'][i]).strip() for i in range(len(df)) ] 
-    df['stationcruindex'] = [ str(df['stationcruindex'][i]).strip() for i in range(len(df)) ] 
-    df['stationgridcell'] = [ str(df['stationgridcell'][i]).strip() for i in range(len(df)) ] 
+#    df['stationfirstyear'] = [ str(df['stationfirstyear'][i]).strip() for i in range(len(df)) ] 
+#    df['stationlastyear'] = [ str(df['stationlastyear'][i]).strip() for i in range(len(df)) ] 
+#    df['stationsource'] = [ str(df['stationsource'][i]).strip() for i in range(len(df)) ] 
+#    df['stationfirstreliable'] = [ str(df['stationfirstreliable'][i]).strip() for i in range(len(df)) ] 
+#    df['stationcruindex'] = [ str(df['stationcruindex'][i]).strip() for i in range(len(df)) ] 
+#    df['stationgridcell'] = [ str(df['stationgridcell'][i]).strip() for i in range(len(df)) ] 
 
-    # convert numeric types to int
+    # convert numeric types to int - important due to fillValue
 
+#    df['year'] = df['year'].astype('int')
+    for j in range(1,13):
+        df[df.columns[j]] = df[df.columns[j]].astype('int')
+#    df['stationcode'] = df['stationcode'].astype('int')
     df['stationlat'] = df['stationlat'].astype('int')
     df['stationlon'] = df['stationlon'].astype('int')
     df['stationelevation'] = df['stationelevation'].astype('int')
-    df['stationfirstyear'] = df['stationfirstyear'].astype('int')
-    df['stationlastyear'] = df['stationlastyear'].astype('int')    
-    df['stationsource'] = df['stationsource'].astype('int')    
-    df['stationfirstreliable'] = df['stationfirstreliable'].astype('int')
+#    df['stationfirstyear'] = df['stationfirstyear'].astype('int')
+#    df['stationlastyear'] = df['stationlastyear'].astype('int')    
+#    df['stationsource'] = df['stationsource'].astype('int')    
+#    df['stationfirstreliable'] = df['stationfirstreliable'].astype('int')
 #    df['stationcruindex'] = df['stationcruindex'].astype('int')
 #    df['stationgridcell'] = df['stationgridcell'].astype('int') 
 
-    # bad data handling
-
-#    df['stationheader'] = stationheader          
-#    nchar = [ len(df['stationheader'][i]) for i in range(len(df)) ]      
-#    nwords = [ len(df['stationheader'][i].split()) for i in range(len(df)) ]      
+    # error handling
 
 #    for i in range(len(df)):        
 #        if str(df['stationcruindex'][i])[1:].isdigit() == False:
@@ -230,19 +229,17 @@ def load_dataframe(filename_txt):
  
     # replace fillvalues
 
-    df['year'].replace(-999, np.nan, inplace=True) 
- 
+#    df['year'].replace(-999, np.nan, inplace=True) 
     for j in range(1,13):    
         df[df.columns[j]].replace(-999, np.nan, inplace=True)
-
+#    df['stationcode'].replace(-999, np.nan, inplace=True) 
     df['stationlat'].replace(-999, np.nan, inplace=True) 
     df['stationlon'].replace(-9999, np.nan, inplace=True) 
-    df['stationelevation'].replace(-999, np.nan, inplace=True) 
-    df['stationfirstyear'].replace(-999, np.nan, inplace=True) 
-    df['stationlastyear'].replace(-999, np.nan, inplace=True) 
-    df['stationsource'].replace(-999, np.nan, inplace=True) 
-    df['stationfirstreliable'].replace(-999, np.nan, inplace=True)    
-    df.to_csv('df.csv')
+    df['stationelevation'].replace(-9999, np.nan, inplace=True) 
+#    df['stationfirstyear'].replace(-999, np.nan, inplace=True) 
+#    df['stationlastyear'].replace(-999, np.nan, inplace=True) 
+#    df['stationsource'].replace(-999, np.nan, inplace=True) 
+#    df['stationfirstreliable'].replace(-999, np.nan, inplace=True)      
     
     return df
 
@@ -279,24 +276,21 @@ def plot_stations(lon,lat,mapfigstr,maptitlestr):
 
 if load_df_temp == True:
 
+    print('loading temperatures ...')
+
+    df_temp = pd.read_pickle('df_temp.pkl', compression='bz2')    
+    
     #------------------------------------------------------------------------------
     # EXTRACT TARBALL IF df.csv IS COMPRESSED:
     #------------------------------------------------------------------------------
 
-    filename = Path("df_temp.csv")
-    if not filename.is_file():
-
-        print('Uncompressing df.csv from tarball ...')
-
-        #filename = "df_temp.tar.gz"
-        #subprocess.Popen(['tar', '-xzvf', filename]) # = tar -xzvf df_temp.tar.gz
-        filename = "df_temp.tar.bz2"
-        subprocess.Popen(['tar', '-xjvf', filename])  # = tar -xjvf df_temp.tar.bz2
-        time.sleep(5) # pause 5 seconds to give tar extract time to complete prior to attempting pandas read_csv
-
-    print('loading temperatures ...')
-
-    df_temp = pd.read_csv('df_temp.csv', index_col=0)
+#   filename = Path("df_temp.csv")
+#    if not filename.is_file():
+#        print('Uncompressing filename from tarball ...')
+#        filename = "df_temp.tar.bz2"
+#        subprocess.Popen(['tar', '-xjvf', filename])  # = tar -xjvf df_temp.tar.bz2
+#        time.sleep(5) # pause 5 seconds to give tar extract time to complete prior to attempting pandas read_csv
+#   df_temp = pd.read_csv('df_temp.csv', index_col=0)
 
 else:    
     
@@ -315,7 +309,6 @@ else:
     
     print('apply scale factors ...')
 
-    df = pd.read_csv('df.csv', index_col=0)
     df['stationlat'] = df['stationlat']/10.0
     df['stationlon'] = df['stationlon']/10.0
     for j in range(1,13):
@@ -329,10 +322,32 @@ else:
 
     df['stationlon'] = -df['stationlon']        
 
+    #------------------------------------------------------------------------------
+    # CONVERT DTYPES FOR EFFICIENT STORAGE
+    #------------------------------------------------------------------------------
+
+    df['year'] = df['year'].astype('int16')
+    for j in range(1,13):
+        df[df.columns[j]] = df[df.columns[j]].astype('float32')
+    df['stationcode'] = df['stationcode'].astype('int32')
+    df['stationlat'] = df['stationlat'].astype('float32')
+    df['stationlon'] = df['stationlon'].astype('float32')
+    df['stationelevation'] = df['stationelevation'].astype('int16')
+#    df['stationfirstyear'] = df['stationfirstyear'].astype('int16')
+#    df['stationlastyear'] = df['stationlastyear'].astype('int16')    
+#    df['stationsource'] = df['stationsource'].astype('int8')    
+#    df['stationfirstreliable'] = df['stationfirstreliable'].astype('int16')
+#    df['stationcruindex'] = df['stationcruindex'].astype('int16')
+#    df['stationgridcell'] = df['stationgridcell'].astype('int16') 
+
+    #------------------------------------------------------------------------------
+    # SAVE TEMPERATURES
+    #------------------------------------------------------------------------------
+
     print('save temperatures ...')
 
     df_temp = df.copy()
-    df_temp.to_csv('df_temp.csv')
+    df_temp.to_pickle('df_temp.pkl', compression='bz2')
 
 #------------------------------------------------------------------------------
 # CALCULATE 1961-1990 baselines and anomalies
@@ -342,7 +357,7 @@ if load_df_anom == True:
 
     print('loading anomalies ...')
 
-    df_anom = pd.read_csv('df_anom.csv', index_col=0)
+    df_anom = pd.read_pickle('df_anom.pkl', compression='bz2')    
 
 else:
     
@@ -357,7 +372,7 @@ else:
 
     print('save anomalies ...')
 
-    df_anom.to_csv('df_anom.csv')
+    df_anom.to_pickle('df_anom.pkl', compression='bz2')
 
 #------------------------------------------------------------------------------
 # NORMALIZE TIMESERIES
@@ -367,7 +382,7 @@ if load_df_norm == True:
 
     print('loading normalized anomalies ...')
 
-    df_norm = pd.read_csv('df_norm.csv', index_col=0)
+    df_norm = pd.read_pickle('df_norm.pkl', compression='bz2')    
     
 else:
 
@@ -383,8 +398,8 @@ else:
 
     print('save normalized anomalies ...')
 
-    df_norm.to_csv('df_norm.csv')
-
+    df_norm.to_pickle('df_norm.pkl', compression='bz2')
+    
 #------------------------------------------------------------------------------
 # KLIB: data summary:
 # https://github.com/akanz1/klib    
@@ -398,13 +413,14 @@ if plot_klib == True:
 
     fig = plt.figure(1,figsize=(15,10))
     klib.missingval_plot(df_temp)
+#    klib.missingval_plot(df_temp.iloc[:,range(13)])
     plt.savefig('klib-dataset-summary.png')
     plt.close(fig)
 
-    # display column count and data types
+    # display data types and most efficient representation
     
-    print(df.info(memory_usage='deep'))
     df_temp_cleaned = klib.data_cleaning(df_temp)
+    print(df.info(memory_usage='deep'))
     print(df_temp_cleaned.info(memory_usage='deep'))
 
     # PLOT: correlations (and separated (pos)itive and (neg)ative correlations
