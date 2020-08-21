@@ -94,7 +94,7 @@ df_anom = pd.read_pickle('df_anom.pkl', compression='bz2')
 time.sleep(5) # pause 5 seconds to extract dataframe
 stationlon = df_temp['stationlon']
 stationlat = df_temp['stationlat']
-stationcode = int(df_temp['stationcode'].unique()).str.zfill(6)
+stationcode = df_temp['stationcode'].str.zfill(6).unique()
 
 opts = [{'label' : stationcode[i], 'value' : i} for i in range(len(stationcode))]
 
