@@ -125,7 +125,7 @@ app.layout = html.Div(children=[
                 dcc.Dropdown(
                     id = "station",
                     options = opts,           
-                    value = 38900,
+                    value = '038900',
                     style = {'padding' : '10px', 'width': '100%', 'display': 'inline-block'},
                 ),                                    
             ]), 
