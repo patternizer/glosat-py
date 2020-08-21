@@ -91,9 +91,10 @@ fontsize = 12
 #df_anom = pd.read_csv('df_anom.csv', index_col=0)
 df_temp = pd.read_pickle('df_temp.pkl', compression='bz2')
 df_anom = pd.read_pickle('df_anom.pkl', compression='bz2')
+time.sleep(5) # pause 5 seconds to extract dataframe
 stationlon = df_temp['stationlon']
 stationlat = df_temp['stationlat']
-stationcode = df_temp['stationcode'].unique()
+stationcode = int(df_temp['stationcode'].unique()).str.zfill(6)
 
 opts = [{'label' : stationcode[i], 'value' : i} for i in range(len(stationcode))]
 
@@ -124,7 +125,7 @@ app.layout = html.Div(children=[
                 dcc.Dropdown(
                     id = "station",
                     options = opts,           
-                    value = 10080,
+                    value = 38900,
                     style = {'padding' : '10px', 'width': '100%', 'display': 'inline-block'},
                 ),                                    
             ]), 
@@ -365,5 +366,6 @@ def update_plot_worldmap(value):
 ##################################################################################################
 
 if __name__ == "__main__":
-    app.run_server(debug=True)
+    app.run_server(debug=False)
+#    app.run(debug=False, use_reloader=False)    
     
