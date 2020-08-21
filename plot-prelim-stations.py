@@ -74,15 +74,15 @@ station_start=0;  station_end=10
 load_df_temp = True
 load_df_anom = True
 load_df_norm = True
-plot_klib = True
-
+plot_klib = False
 plot_gap_analysis = False
-plot_temporal_coverage = False
-plot_spatial_coverage = False
-plot_station_timeseres = False
-plot_station_climatology = False
-plot_station_locations = False
-plot_delta_cc = False
+plot_temporal_coverage = True
+plot_spatial_coverage = True
+plot_seasonal_anomalies = True
+plot_station_timeseres = True
+plot_station_climatology = True
+plot_station_locations = True
+plot_delta_cc = True
 delta_cc_20C = True    
 
 #------------------------------------------------------------------------------
@@ -329,7 +329,7 @@ else:
     df['year'] = df['year'].astype('int16')
     for j in range(1,13):
         df[df.columns[j]] = df[df.columns[j]].astype('float32')
-    df['stationcode'] = df['stationcode'].astype('int32')
+#    df['stationcode'] = df['stationcode'].astype('int32')
     df['stationlat'] = df['stationlat'].astype('float32')
     df['stationlon'] = df['stationlon'].astype('float32')
     df['stationelevation'] = df['stationelevation'].astype('int16')
@@ -348,6 +348,9 @@ else:
 
     df_temp = df.copy()
     df_temp.to_pickle('df_temp.pkl', compression='bz2')
+
+
+#df_temp['stationcode'] = df_temp['stationcode'].str.zfill(6)
 
 #------------------------------------------------------------------------------
 # CALCULATE 1961-1990 baselines and anomalies
@@ -413,14 +416,13 @@ if plot_klib == True:
 
     fig = plt.figure(1,figsize=(15,10))
     klib.missingval_plot(df_temp)
-#    klib.missingval_plot(df_temp.iloc[:,range(13)])
     plt.savefig('klib-dataset-summary.png')
     plt.close(fig)
 
     # display data types and most efficient representation
     
     df_temp_cleaned = klib.data_cleaning(df_temp)
-    print(df.info(memory_usage='deep'))
+    print(df_temp.info(memory_usage='deep'))
     print(df_temp_cleaned.info(memory_usage='deep'))
 
     # PLOT: correlations (and separated (pos)itive and (neg)ative correlations
@@ -446,6 +448,56 @@ if plot_klib == True:
 #    klib.cat_plot(df_temp_cleaned, top=10, bottom=10)    
 #    plt.savefig('klib-categorical.png')
 #    plt.close(fig)
+
+#------------------------------------------------------------------------------
+# PLOT: Anomaly timeseries by month
+#------------------------------------------------------------------------------
+
+if plot_seasonal_anomalies == True:
+
+    print('plot_seasonal_anomalies ...')
+    
+    df = df_anom.copy()
+ 
+     # df[df['stationname']=='FORT WILLIAM']['stationcode'].unique()
+    
+    # PLOT: anomaly timeseries for each month of year:
+
+    figstr = 'annual-mean-anomaly-by-month.png'
+    titlestr = 'Annual mean temperature anomaly (from 1961-1990) by month'    
+
+    n = 12            
+    colors = cmocean.cm.balance(np.linspace(0.05,0.95,n)) 
+    hexcolors = [ "#{:02x}{:02x}{:02x}".format(int(colors[i][0]*255),int(colors[i][1]*255),int(colors[i][2]*255)) for i in range(len(colors)) ]
+                               
+    def plot_timeseries(y,i,row,col):            
+        axs[row,col].plot(y,color=hexcolors[i], label='Month=' + str(i+1))
+        axs[row,col].set_title('Month=' + "{0:.0f}".format(i+1), fontsize=15)
+       
+    fig, axs = plt.subplots(4,3,figsize=(15,10))
+    plot_timeseries(df.groupby('year').mean().iloc[:,0],0,0,0)
+    plot_timeseries(df.groupby('year').mean().iloc[:,1],1,0,1)
+    plot_timeseries(df.groupby('year').mean().iloc[:,2],2,0,2)
+    plot_timeseries(df.groupby('year').mean().iloc[:,3],3,1,0)
+    plot_timeseries(df.groupby('year').mean().iloc[:,4],4,1,1)
+    plot_timeseries(df.groupby('year').mean().iloc[:,5],5,1,2)
+    plot_timeseries(df.groupby('year').mean().iloc[:,6],6,2,0)
+    plot_timeseries(df.groupby('year').mean().iloc[:,7],7,2,1)
+    plot_timeseries(df.groupby('year').mean().iloc[:,8],8,2,2)
+    plot_timeseries(df.groupby('year').mean().iloc[:,9],9,3,0)
+    plot_timeseries(df.groupby('year').mean().iloc[:,10],10,3,1)
+    plot_timeseries(df.groupby('year').mean().iloc[:,11],11,3,2)
+    for ax in axs.flat:
+        ax.set_xlabel("Year", fontsize=15)
+        ax.set_ylabel("Anomaly, " + "$\mathrm{\degree}$C", fontsize=15)
+    for ax in axs.flat:
+        ax.set_ylim([-5,5])
+        ax.yaxis.grid(True, which='major')                
+        ax.label_outer()
+#        ax.legend(loc='best', fontsize=8)           
+    fig.suptitle(titlestr, fontsize=fontsize)        
+    plt.savefig(figstr)
+    plt.close(fig)
     
 #------------------------------------------------------------------------------
 # PLOT: station coverage - thanks to Kate-Willett (UKMO) for spec. humidity code:
@@ -454,18 +506,10 @@ if plot_klib == True:
 
 if plot_gap_analysis == True:
 
-    # PLOT: anomaly timeseries for each month of year:
+    print('plot_gap_analysis ...')
     
-    fig = plt.figure(1,figsize=(15,10))
-    for i in range(0,12):
-        plt.plot(df.groupby('year').mean().iloc[:,i], label='Month=' + str(i+1))
-    plt.legend(fontsize=fontsize/2)
-    plt.tick_params(axis='both', which='major', labelsize=fontsize)    
-    plt.xlabel('Year', fontsize=fontsize)
-    plr.ylabel("Annual mean anomaly, " + "$\mathrm{\degree}$C", fontsize=fontsize)
-    plt.savefig('monthly-anomaly-timeseries.png')
-    plt.close(fig)
-                            
+    df = df_anom.copy()
+
     # Contruct palette of colours over station ID
 
     # WMO ID blocks:
@@ -509,7 +553,7 @@ if plot_gap_analysis == True:
 	    ['Pacific Islands',900000,919999],
 	    ['Australasia',920000,949999],
 	    ['Indonesia/Philippines/Borneo',950000,999999]])
-    stationlist = df['stationcode'].unique()    
+    stationlist = df['stationcode'].unique().astype('int')
 
     stationcolours = []
     for i in range(len(labellist)):        
@@ -521,14 +565,6 @@ if plot_gap_analysis == True:
 
     station_yearly_count = df.groupby('year')['stationcode'].count()
     t_station_yearly_count = pd.date_range(start=str(df['year'].min()), periods=len(station_yearly_count), freq='A')
-
-    fig = plt.figure(1,figsize=(15,10))
-    plt.plot(t_station_yearly_count, station_yearly_count)
-    plt.tick_params(axis='both', which='major', labelsize=fontsize)    
-    plt.xlabel('Year', fontsize=fontsize)
-    plt.ylabel('Annual station count', fontsize=fontsize)
-    plt.savefig('gap_analysis-annual-station-count')
-    plt.close(fig)
     
     # Contruct timeseries of yearly mean and s.d.
 
@@ -540,14 +576,6 @@ if plot_gap_analysis == True:
         global_yearly_mean.append(yearly_mean)
         global_yearly_std.append(yearly_std)
     t_yearly = pd.date_range(start=str(df['year'].min()), periods=len(global_yearly_mean), freq='A')
-
-    fig = plt.figure(1,figsize=(15,10))
-    plt.plot(t_yearly, global_yearly_mean)
-    plt.tick_params(axis='both', which='major', labelsize=fontsize)    
-    plt.xlabel('Year', fontsize=fontsize)
-    plt.ylabel('Annual mean anomaly', fontsize=fontsize)
-    plt.savefig('gap_analysis-annual-mean')
-    plt.close(fig)
 
     # Contruct timeseries of monthly mean and s.d.
 
@@ -561,39 +589,36 @@ if plot_gap_analysis == True:
             global_monthly_std.append(monthly_std)
     t_monthly = pd.date_range(start=str(df['year'].min()), periods=len(global_monthly_mean), freq='M')
 
-    fig = plt.figure(1,figsize=(15,10))
-    plt.plot(t_monthly, global_monthly_mean)
-    plt.tick_params(axis='both', which='major', labelsize=fontsize)    
-    plt.xlabel('Year', fontsize=fontsize)
-    plt.ylabel('Monthly mean anomaly', fontsize=fontsize)
-    plt.savefig('gap_analysis-monthly-mean')
-    plt.close(fig)
-
     # PLOT: timeseries of monthly obs per station
 
     figstr = 'gap-analysis-plus-annual-mean-anomaly.png'
-    titlestr = 'GloSATprelim01: Data coverage & annual mean temperature anomaly (from 1961-1990)'    
+    titlestr = 'Gap analysis and annual mean temperature anomaly (from 1961-1990)'    
 #    figstr = 'gap-analysis-plus-annual-station-count.png'
-#    titlestr = 'GloSATprelim01: Data coverage & annual station count'    
+#    titlestr = 'Gap analysis and annual station count'    
     xstr = 'Year'
     y1str = 'Station ID'
-    y2str = "Annual mean anomaly, " + "$\mathrm{\degree}$C"
+    y2str = "Annual mean temperature anomaly, " + "$\mathrm{\degree}$C"
 #    y2str = 'Annual station count'
             
-    fig = plt.figure(1,figsize=(15,10))
-    plt.clf() # needs to be called after figure!!! (create the figure, then clear the plot space)
-    ax1=plt.subplot(1,1,1)
-    ax1.tick_params(axis='both', which='major', labelsize=fontsize)
-        
-    for i in range(len(df['stationcode'].unique())):            
-            
+    def find_gaps(df,i):
+
         da = df[df['stationcode']==df['stationcode'].unique()[i]].iloc[:,range(0,13)]
         ts = np.array([ da.iloc[i,1:].to_list() for i in range(len(da)) ]).ravel()            
         t = pd.date_range(start=str(da['year'].iloc[0]), periods=len(da)*12, freq='M')
         mask = np.isfinite(ts)
         x = t[mask]
-        y = np.ones(len(ts))[mask]*df['stationcode'].unique()[i]
+        y = np.ones(len(ts))[mask]*int(df['stationcode'].unique()[i])
+
+        return x,y
+
+    fig = plt.figure(1,figsize=(15,10))
+    plt.clf() # clear plot space
+    ax1=plt.subplot(1,1,1)
+    ax1.tick_params(axis='both', which='major', labelsize=fontsize)
+                
+    for i in range(len(df['stationcode'].unique())):            
             
+        x,y = find_gaps(df,i)            
         ax1.plot(x, y, color=stationcolours[i], linewidth=1)
     
     ax1.set_title(titlestr,size=fontsize)
@@ -619,16 +644,7 @@ if plot_delta_cc == True:
     # EXTRACT TARBALL IF df_norm.csv IS COMPRESSED:
     #------------------------------------------------------------------------------
 
-    filename = Path("df_norm.csv")
-    if not filename.is_file():
-        print('Uncompressing df_norm.csv from tarball ...')
-        #filename = "df_norm.tar.gz"
-        #subprocess.Popen(['tar', '-xzvf', filename]) # = tar -xzvf df_norm.tar.gz
-        filename = "df_norm.tar.bz2"
-        subprocess.Popen(['tar', '-xjvf', filename])  # = tar -xjvf df_norm.tar.bz2
-        time.sleep(5) # pause 5 seconds to give tar extract time to complete prior to attempting pandas read_csv
-
-    df = pd.read_csv('df_norm.csv', index_col=0)
+    df = df_norm.copy()
         
     def plot_hist_array(diff, figstr, titlestr):
 
@@ -869,8 +885,6 @@ if plot_delta_cc == True:
     plot_stations(lon,lat,mapfigstr,maptitlestr)
     plot_hist_array(diff, figstr, titlestr)
 
-    df = pd.read_csv('df.csv', index_col=0)
-
 #------------------------------------------------------------------------------
 # PLOTS
 #------------------------------------------------------------------------------
@@ -878,6 +892,8 @@ if plot_delta_cc == True:
 if plot_temporal_coverage == True:
     
     print('plot_temporal_coverage...')
+
+    df = df_temp.copy()
 
 #    coverage per month:    
 #    plt.plot(df.groupby('year').sum().iloc[:,0:12])
@@ -895,7 +911,7 @@ if plot_temporal_coverage == True:
     Q3 = pd.Series(bins).iloc[(pd.Series(np.cumsum(counts))-np.sum(counts)*0.75).abs().argsort()[:1]].values[0]
              
     figstr = 'temporal-coverage-1900.png'
-    titlestr = 'Yearly coverage: GloSATprelim01 (to 1900): N=' + "{0:.0f}".format(np.sum(counts))
+    titlestr = 'Yearly coverage (1721-1900): N=' + "{0:.0f}".format(np.sum(counts))
 
     fig, ax = plt.subplots(figsize=(15,10))          
 #    plt.hist(df[df['year']<=1900]['year'], bins=nbins, density=False, facecolor='grey', alpha=0.5, label='KDE')
@@ -924,7 +940,7 @@ if plot_temporal_coverage == True:
     Q3 = pd.Series(bins).iloc[(pd.Series(np.cumsum(counts))-np.sum(counts)*0.75).abs().argsort()[:1]].values[0]
              
     figstr = 'temporal-coverage-full.png'
-    titlestr = 'Yearly coverage: GloSATprelim01 (full): N=' + "{0:.0f}".format(np.sum(counts)) 
+    titlestr = 'Yearly coverage (1721-2019): N=' + "{0:.0f}".format(np.sum(counts)) 
 
     fig, ax = plt.subplots(figsize=(15,10))          
     plt.fill_between(bins, counts, step="pre", facecolor='lightgrey', alpha=1.0)
@@ -948,6 +964,8 @@ if plot_spatial_coverage == True:
 
     print('plot_spatial_coverage: latitudinal ...')
 
+    df = df_temp.copy()
+
     nbins = lat_end - lat_start + 1
     bins = np.linspace(lat_start, lat_end, nbins) 
     counts, edges = np.histogram(df['stationlat'], nbins, range=[lat_start,lat_end], density=False)       
@@ -956,14 +974,14 @@ if plot_spatial_coverage == True:
     Q3 = pd.Series(bins).iloc[(pd.Series(np.cumsum(counts))-np.sum(counts)*0.75).abs().argsort()[:1]].values[0]
 
     figstr = 'latitudinal-coverage-full.png'
-    titlestr = 'Latitudinal coverage: GloSATprelim01 (full)'
+    titlestr = 'Latitudinal coverage (1721-2019)'
 
     fig, ax = plt.subplots(figsize=(15,10))          
     plt.fill_between(bins, counts, step="pre", facecolor='lightgrey', alpha=1.0)
 #    plt.plot(bins, counts, drawstyle='steps', linewidth=2, color='black')    
-    plt.axvline(x=Q1, color='blue', label='Q1: ' + "{0:.0f}".format(Q1))    
-    plt.axvline(x=Q2, color='red', label='Q2: ' + "{0:.0f}".format(Q2))    
-    plt.axvline(x=Q3, color='blue', label='Q3: ' + "{0:.0f}".format(Q3))    
+    plt.axvline(x=Q1, color='blue', label='Q1: ' + "{0:.0f}".format(Q1) + "$\mathrm{\degree}N$")    
+    plt.axvline(x=Q2, color='red', label='Q2: ' + "{0:.0f}".format(Q2) + "$\mathrm{\degree}N$")    
+    plt.axvline(x=Q3, color='blue', label='Q3: ' + "{0:.0f}".format(Q3) + "$\mathrm{\degree}N$")    
     plt.tick_params(labelsize=fontsize)    
     plt.legend(loc='best', fontsize=fontsize)
     plt.xlabel("Latitude, $\mathrm{\degree}N$", fontsize=fontsize)
@@ -986,14 +1004,14 @@ if plot_spatial_coverage == True:
     Q3 = pd.Series(bins).iloc[(pd.Series(np.cumsum(counts))-np.sum(counts)*0.75).abs().argsort()[:1]].values[0]
 
     figstr = 'longitudinal-coverage-full.png'
-    titlestr = 'Longitudinal coverage: GloSATprelim01 (full)'
+    titlestr = 'Longitudinal coverage (1721-2019)'
 
     fig, ax = plt.subplots(figsize=(15,10))          
     plt.fill_between(bins, counts, step="pre", facecolor='lightgrey', alpha=1.0)
 #    plt.plot(bins, counts, drawstyle='steps', linewidth=2, color='black')    
-    plt.axvline(x=Q1, color='blue', label='Q1: ' + "{0:.0f}".format(Q1))    
-    plt.axvline(x=Q2, color='red', label='Q2: ' + "{0:.0f}".format(Q2))    
-    plt.axvline(x=Q3, color='blue', label='Q3: ' + "{0:.0f}".format(Q3))    
+    plt.axvline(x=Q1, color='blue', label='Q1: ' + "{0:.0f}".format(Q1) + "$\mathrm{\degree}W$")    
+    plt.axvline(x=Q2, color='red', label='Q2: ' + "{0:.0f}".format(Q2) + "$\mathrm{\degree}W$")    
+    plt.axvline(x=Q3, color='blue', label='Q3: ' + "{0:.0f}".format(Q3) + "$\mathrm{\degree}W$")    
     plt.tick_params(labelsize=fontsize)    
     plt.legend(loc='best', fontsize=fontsize)
     plt.xlabel("Longitude, $\mathrm{\degree}W$", fontsize=fontsize)
@@ -1010,6 +1028,8 @@ if plot_station_timeseres == True:
 
     print('plot_station_timeseries ...')
         
+    df = df_anom.copy()
+    
     #for j in range(len(np.unique(stationcode))):
     for j in range(station_start,station_end):
     
@@ -1039,18 +1059,19 @@ if plot_station_timeseres == True:
         hexcolors = [ "#{:02x}{:02x}{:02x}".format(int(colors[i][0]*255),int(colors[i][1]*255),int(colors[i][2]*255)) for i in range(len(colors)) ]
     
         figstr = 'timeseries_' + str(int(df['stationcode'].unique()[j])) + '.png'
-        titlestr = 'Monthly temperature anomaly timeseries: stationcode=' + str(int(df['stationcode'].unique()[j]))
+        titlestr = 'Annual mean temperature anomaly timeseries: stationcode=' + str(int(df['stationcode'].unique()[j]))
               
         fig, ax = plt.subplots(figsize=(15,10))      
 #        plt.plot(t,ts, color='lightgrey', label='Monthly')
-        plt.errorbar(t_yearly, ts_yearly, yerr=ts_yearly_sd, xerr=None, fmt='None', ecolor=hexcolors, label='Yearly mean ± 1 s.d.')                                   
+        plt.errorbar(t_yearly, ts_yearly, yerr=ts_yearly_sd, xerr=None, fmt='None', ecolor=hexcolors, label='± 1 s.d.')                                   
         for k in range(n):     
             if k==n-1:
-                plt.scatter(t_yearly[k],ts_yearly[k], color=hexcolors[k], label='Yearly mean')
+                plt.scatter(t_yearly[k],ts_yearly[k], color=hexcolors[k], label='Annual mean')
             else:
                 plt.scatter(t_yearly[k],ts_yearly[k], color=hexcolors[k], label=None)
         plt.clim([min(ts_yearly),max(ts_yearly)])
         plt.tick_params(labelsize=fontsize)
+        ax.yaxis.grid(True, which='major')        
         plt.legend(loc=2, ncol=1, fontsize=fontsize)
         plt.xlabel("Year", fontsize=fontsize)
         plt.ylabel("Temperature anomaly, $\mathrm{\degree}C$", fontsize=fontsize)
@@ -1066,6 +1087,8 @@ if plot_station_climatology == True:
 
     print('plot_station_climatology ...')
         
+    df = df_temp.copy()
+    
     #for j in range(len(np.unique(stationcode))):        
     for j in range(station_start,station_end):
     
@@ -1076,7 +1099,7 @@ if plot_station_climatology == True:
         hexcolors = [ "#{:02x}{:02x}{:02x}".format(int(colors[i][0]*255),int(colors[i][1]*255),int(colors[i][2]*255)) for i in range(len(colors)) ]
         
         figstr = 'seasonal-cycle_' + str(int(df['stationcode'].unique()[j])) + '.png'
-        titlestr = 'Monthly temperature anomaly seasonal cycle: stationcode=' + str(int(df['stationcode'].unique()[j]))
+        titlestr = 'Monthly temperature seasonal cycle: stationcode=' + str(int(df['stationcode'].unique()[j]))
 
         fig, ax = plt.subplots(figsize=(15,10))      
         for k in range(n):     
@@ -1086,10 +1109,12 @@ if plot_station_climatology == True:
                 plt.plot(np.arange(1,13),Y.iloc[:,k], linewidth=3, color=hexcolors[k], label=str(X.iloc[k]))
             else:
                 plt.plot(np.arange(1,13),Y.iloc[:,k], linewidth=0.5, color=hexcolors[k], label=None)                
+        ax.xaxis.grid(True, which='major')        
+        ax.yaxis.grid(True, which='major')        
         plt.legend(loc=2, ncol=1, fontsize=fontsize)
         plt.tick_params(labelsize=fontsize)   
         plt.xlabel("Month", fontsize=fontsize)
-        plt.ylabel("Monthly temperature anomaly, $\mathrm{\degree}C$", fontsize=fontsize)        
+        plt.ylabel("Monthly temperature, $\mathrm{\degree}C$", fontsize=fontsize)        
         plt.title(titlestr, fontsize=fontsize)
         plt.savefig(figstr)
         plt.close(fig)
