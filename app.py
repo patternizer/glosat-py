@@ -125,7 +125,7 @@ app.layout = html.Div(children=[
                 dcc.Dropdown(
                     id = "station",
                     options = opts,           
-                    value = 730260,
+                    value = 7939, # Death Valley
                     style = {'padding' : '10px', 'width': '100%', 'display': 'inline-block'},
                 ),                                    
             ]), 
@@ -193,7 +193,7 @@ def update_station_info(value):
     Display station info
     """
 
-    code = df_temp[df_temp['stationcode']==stationcode[value]]['stationcode'].iloc[0]
+#    code = df_temp[df_temp['stationcode']==stationcode[value]]['stationcode'].iloc[0]
     lat = df_temp[df_temp['stationcode']==stationcode[value]]['stationlat'].iloc[0]
     lon = df_temp[df_temp['stationcode']==stationcode[value]]['stationlon'].iloc[0]
     station = df_temp[df_temp['stationcode']==stationcode[value]]['stationname'].iloc[0]
