@@ -24,11 +24,12 @@ import matplotlib
 import matplotlib.pyplot as plt; plt.close('all')
 import matplotlib.cm as cm
 import matplotlib.colors as c
+from matplotlib.colors import Normalize
 from matplotlib import colors as mcol
 from matplotlib.cm import ScalarMappable
 from pandas.plotting import register_matplotlib_converters
 register_matplotlib_converters()
-matplotlib.rcParams['text.usetex'] = True
+matplotlib.rcParams['text.usetex'] = False
 import matplotlib.dates as mdates
 import matplotlib.colors as mcolors
 import matplotlib.ticker as mticker
@@ -176,6 +177,24 @@ app.layout = html.Div(children=[
     ]),
 # ------------
 
+# ------------
+    html.Div([
+        dbc.Row([
+            # ------------
+            dbc.Col(html.Div([                    
+                dcc.Graph(id="plot-stripes", style = {'padding' : '10px', 'width': '100%', 'display': 'inline-block'}),                                      
+            ]), 
+            width={'size':6}, 
+            ),                        
+#            dbc.Col(html.Div([
+#                dcc.Graph(id="plot-climatology", style = {'padding' : '10px', 'width': '100%', 'display': 'inline-block'}),                                 
+#            ]), 
+#            width={'size':6}, 
+#            ),            
+        ]),
+    ]),
+# ------------
+
 ])
 
 # ========================================================================
@@ -232,11 +251,14 @@ def update_plot_timeseries(value):
     """
 
     da = df_anom[df_anom['stationcode']==stationcode[value]].iloc[:,range(0,13)]
-    ts = []    
+
+    ts_monthly = []    
     for i in range(len(da)):            
         monthly = da.iloc[i,1:]
-        ts = ts + monthly.to_list()    
-    ts = np.array(ts)                
+        ts_monthly = ts_monthly + monthly.to_list()    
+    ts_monthly = np.array(ts_monthly)                
+    t_monthly = pd.date_range(start=str(da['year'].iloc[0]), periods=len(ts_monthly), freq='M')     
+
     ts_yearly = []    
     ts_yearly_sd = []    
     for i in range(len(da)):            
@@ -249,16 +271,14 @@ def update_plot_timeseries(value):
         ts_yearly.append(yearly)    
         ts_yearly_sd.append(yearly_sd)    
     ts_yearly_sd = np.array(ts_yearly_sd)                    
-    t = pd.date_range(start=str(da['year'].iloc[0]), periods=len(ts), freq='M')     
     t_yearly = pd.date_range(start=str(da['year'].iloc[0]), periods=len(ts_yearly), freq='A')   
 
-    Y = df_anom[df_anom['stationcode']==stationcode[value]].iloc[:,range(1,13)].T
-    n = len(Y.T)            
+    n = len(t_yearly)
     colors = cmocean.cm.balance(np.linspace(0.05,0.95,n)) 
     hexcolors = [ "#{:02x}{:02x}{:02x}".format(int(colors[i][0]*255),int(colors[i][1]*255),int(colors[i][2]*255)) for i in range(len(colors)) ]
                                   
     data=[
-        go.Scatter(x=t, y=ts, 
+        go.Scatter(x=t_monthly, y=ts_monthly, 
             mode='lines+markers', 
             legendgroup="a",
             line=dict(width=1.0, color='lightgrey'),
@@ -273,7 +293,6 @@ def update_plot_timeseries(value):
         go.Scatter(x=t_yearly, y=ts_yearly, 
             mode='markers', 
             legendgroup="a",
-#            line=dict(width=2.0, color=hexcolors),
             marker=dict(size=10, opacity=1.0, color=hexcolors),
             name='Yearly',
             yaxis='y1',
@@ -282,11 +301,103 @@ def update_plot_timeseries(value):
     
     fig = go.Figure(data)
     fig.update_layout(
+        xaxis = dict(range=[t_yearly[np.isfinite(ts_yearly)][0], t_yearly[np.isfinite(ts_yearly)][-1]]),       
         xaxis_title = {'text': 'Year'},
         yaxis_title = {'text': 'Temperature anomaly, °C'},
-#        title = {'text': 'Seasonal cycle', 'x':0.5, 'y':0.925, 'xanchor': 'center', 'yanchor': 'top'}
     )
     fig.update_layout(height=300, width=700, margin={"r":0,"t":0,"l":10,"b":0})    
+
+    return fig
+
+@app.callback(
+    Output(component_id='plot-stripes', component_property='figure'),
+    [Input(component_id='station', component_property='value')],    
+    )
+
+def update_plot_stripes(value):
+    
+    """
+    Plot station stripes
+    """
+
+#    value = 7939, # Death Valley
+    print(value)
+
+    # Calculate 1961-1990 monthly mean and full timeseries yearly s.d.
+    # color range +/- 2.6 standard deviations
+
+    da = df_temp[df_temp['stationcode']==df_anom['stationcode'].unique()[value]]
+    monthly = np.array(da.iloc[:,1:13]).ravel()             
+    yearly=(da.groupby('year').mean().iloc[:,0:12]).dropna().mean(axis=1)    
+#   yearly = np.nanmean(np.array(da.groupby('year').mean().iloc[:,0:12]),axis=1)                
+    mu = np.nanmean(np.array(da[(da['year']>=1961) & (da['year']<=1990)].iloc[:,1:13].dropna()).ravel())
+#    sigma = np.nanstd(yearly[(yearly.index>=1900)&(yearly.index<=2000)])
+    sigma = np.nanstd(yearly)    
+    maxval = +2.6 * sigma
+    minval = -2.6 * sigma
+    stripe = (yearly-mu)*0.0+1.0
+    n = len(yearly)            
+
+    #--------------------------------------------------------------------------
+    # ZEKE HAUSFATHER: many thanks for colorscale normalisation scheme
+    #--------------------------------------------------------------------------
+    temps = np.array(yearly)
+    temps_normed = ((temps - temps.min(0)) / temps.ptp(0)) * (len(temps) - 1)
+    elements = len(temps)
+    x_lbls = np.arange(elements)
+    y_vals = temps_normed / (len(temps) - 1)
+    y_vals2 = np.full(elements, 1)
+    bar_wd  = 1
+    #--------------------------------------------------------------------------
+
+#    my_cmap = plt.cm.RdBu_r #choose colormap to use for bars
+#    norm = Normalize(vmin=0, vmax=elements - 1)
+
+#    def colorval(num):
+#        return my_cmap(norm(num))
+
+#    fig=plt.figure(figsize=(6,3))
+#    plt.axis('off')
+#    plt.axis('tight')
+#    #Plot warming stripes. Change y_vals2 to y_vals to plot stripes under the line only.
+#    plt.bar(x_lbls, y_vals2, color = list(map(colorval, temps_normed)), width=1.0)
+#    #Plot temperature timeseries. Comment out to only plot stripes
+#    plt.plot(x_lbls, y_vals - 0.002, color='black', linewidth=1)
+#    plt.xticks( x_lbls + bar_wd, x_lbls)
+#    plt.ylim(0, 1)
+#    fig.subplots_adjust(bottom = 0)
+#    fig.subplots_adjust(top = 1)
+#    fig.subplots_adjust(right = 1.005)
+#    fig.subplots_adjust(left = 0)
+#    fig.savefig('1.png', dpi=300)
+        
+    data=[
+        go.Bar(y=y_vals2, x=x_lbls, 
+            marker = dict(color = y_vals, colorscale='RdBu_r'),                              
+            name='Stripes', yaxis='y1'),            
+        go.Scatter(x=x_lbls, y=y_vals, 
+            mode='lines', 
+            line=dict(width=1, color='black'),
+            name='Anomalies'),
+    ]   
+    
+    fig = go.Figure(data)
+    fig.update_layout(
+        xaxis = dict(
+            range = [0, len(yearly)],
+            showgrid = False, # thin lines in the background
+            zeroline = False, # thick line at x=0
+            visible = False,  # numbers below
+        ), 
+        yaxis = dict(
+            range = [0, 1],
+            showgrid = False, # thin lines in the background
+            zeroline = False, # thick line at x=0
+            visible = False,  # numbers below
+        ), 
+        showlegend = False,    
+    )
+    fig.update_layout(height=300, width=700, margin={"r":100,"t":0,"l":40,"b":0})    
 
     return fig
 
