@@ -186,11 +186,11 @@ app.layout = html.Div(children=[
             ]), 
             width={'size':6}, 
             ),                        
-#            dbc.Col(html.Div([
-#                dcc.Graph(id="plot-climatology", style = {'padding' : '10px', 'width': '100%', 'display': 'inline-block'}),                                 
-#            ]), 
-#            width={'size':6}, 
-#            ),            
+            dbc.Col(html.Div([
+                dcc.Graph(id="plot-spiral", style = {'padding' : '10px', 'width': '100%', 'display': 'inline-block'}),                                 
+            ]), 
+            width={'size':6}, 
+            ),            
         ]),
     ]),
 # ------------
@@ -301,7 +301,8 @@ def update_plot_timeseries(value):
     
     fig = go.Figure(data)
     fig.update_layout(
-        xaxis = dict(range=[t_yearly[np.isfinite(ts_yearly)][0], t_yearly[np.isfinite(ts_yearly)][-1]]),       
+#        xaxis = dict(range=[t_yearly[np.isfinite(ts_yearly)][0], t_yearly[np.isfinite(ts_yearly)][-1]]),       
+        xaxis = dict(range=[t_yearly[0],t_yearly[-1]]),       
         xaxis_title = {'text': 'Year'},
         yaxis_title = {'text': 'Temperature anomaly, °C'},
     )
@@ -321,33 +322,50 @@ def update_plot_stripes(value):
     """
 
 #    value = 7939, # Death Valley
-    print(value)
+#    value = 7934, # Socorro
+
+    da = df_temp[df_temp['stationcode']==df_temp['stationcode'].unique()[value]].iloc[:,range(0,13)]
+    ts_yearly = []    
+    for i in range(len(da)):            
+        if da.iloc[i,1:].isnull().any():
+            yearly = np.nan
+        else:
+            yearly = np.nanmean(da.iloc[i,1:])
+        ts_yearly.append(yearly)  
+    ts_yearly = np.array(ts_yearly)        
+    t_yearly = pd.date_range(start=str(da['year'].iloc[0]), periods=len(ts_yearly), freq='A')   
 
     # Calculate 1961-1990 monthly mean and full timeseries yearly s.d.
     # color range +/- 2.6 standard deviations
 
-    da = df_temp[df_temp['stationcode']==df_anom['stationcode'].unique()[value]]
-    monthly = np.array(da.iloc[:,1:13]).ravel()             
-    yearly=(da.groupby('year').mean().iloc[:,0:12]).dropna().mean(axis=1)    
-#   yearly = np.nanmean(np.array(da.groupby('year').mean().iloc[:,0:12]),axis=1)                
-    mu = np.nanmean(np.array(da[(da['year']>=1961) & (da['year']<=1990)].iloc[:,1:13].dropna()).ravel())
-#    sigma = np.nanstd(yearly[(yearly.index>=1900)&(yearly.index<=2000)])
-    sigma = np.nanstd(yearly)    
-    maxval = +2.6 * sigma
-    minval = -2.6 * sigma
-    stripe = (yearly-mu)*0.0+1.0
-    n = len(yearly)            
+#    da = df_temp[df_temp['stationcode']==df_temp['stationcode'].unique()[value]]
+#    ts_monthly = np.array(da.iloc[:,1:13]).ravel()             
+#    ts_yearly = (da.groupby('year').mean().iloc[:,0:12]).mean(axis=1)    
+#    ts_yearly = np.nanmean(np.array(da.groupby('year').mean().iloc[:,0:12]),axis=1)                
+#    t_yearly = pd.date_range(start=str(da['year'].iloc[0]), periods=len(ts_yearly), freq='A')   
+    mu = np.nanmean(np.array(da[(da['year']>=1961) & (da['year']<=1990)].iloc[:,1:13]).ravel())
+#   sigma = np.nanstd(ts_yearly[(ts_yearly.index>=1900)&(ts_yearly.index<=2000)])
+    sigma = np.nanstd(ts_yearly)    
+#    maxcolor = +2.6 * sigma
+#    mincolor = -2.6 * sigma
+#    stripe = (ts_yearly-mu)*0.0+1.0
+    n = len(ts_yearly)            
 
     #--------------------------------------------------------------------------
     # ZEKE HAUSFATHER: many thanks for colorscale normalisation scheme
     #--------------------------------------------------------------------------
-    temps = np.array(yearly)
-    temps_normed = ((temps - temps.min(0)) / temps.ptp(0)) * (len(temps) - 1)
-    elements = len(temps)
-    x_lbls = np.arange(elements)
-    y_vals = temps_normed / (len(temps) - 1)
-    y_vals2 = np.full(elements, 1)
-    bar_wd  = 1
+    mask = np.isfinite(ts_yearly)
+    ts_yearly_min = ts_yearly[mask].min()    
+    ts_yearly_max = ts_yearly[mask].max()    
+    ts_yearly_ptp = ts_yearly[mask].ptp()
+#    ts_yearly_normed = ((ts_yearly - ts_yearly_min) / ts_yearly_ptp) * (len(ts_yearly[mask]) - 1)             
+    ts_yearly_normed = ((ts_yearly - ts_yearly_min) / ts_yearly_ptp) * (n-1)             
+#    temps_normed = ((temps - temps_min) / temps_ptp) * (len(temps[mask]) - 1)            
+#    temps_normed = ((temps - temps.min(0)) / temps.ptp(0)) * (len(temps) - 1)
+#    x_lbls = np.arange(n)
+#    t_yearly = ts_yearly.index
+    ts_yearly_normed = ts_yearly_normed / (n-1)
+    ts_ones = np.full(n,1)
     #--------------------------------------------------------------------------
 
 #    my_cmap = plt.cm.RdBu_r #choose colormap to use for bars
@@ -359,12 +377,9 @@ def update_plot_stripes(value):
 #    fig=plt.figure(figsize=(6,3))
 #    plt.axis('off')
 #    plt.axis('tight')
-#    #Plot warming stripes. Change y_vals2 to y_vals to plot stripes under the line only.
-#    plt.bar(x_lbls, y_vals2, color = list(map(colorval, temps_normed)), width=1.0)
-#    #Plot temperature timeseries. Comment out to only plot stripes
-#    plt.plot(x_lbls, y_vals - 0.002, color='black', linewidth=1)
-#    plt.xticks( x_lbls + bar_wd, x_lbls)
-#    plt.ylim(0, 1)
+#    plt.bar(t_yearly, ts_ones, color = list(map(colorval, ts_yearly_normed)), width=1.0)
+#    plt.plot(t_yearly, ts_yearly_normed - 0.002, color='black', linewidth=1)
+#    plt.ylim(0,1)
 #    fig.subplots_adjust(bottom = 0)
 #    fig.subplots_adjust(top = 1)
 #    fig.subplots_adjust(right = 1.005)
@@ -372,33 +387,40 @@ def update_plot_stripes(value):
 #    fig.savefig('1.png', dpi=300)
         
     data=[
-        go.Bar(y=y_vals2, x=x_lbls, 
-            marker = dict(color = y_vals, colorscale='RdBu_r'),                              
-            name='Stripes', yaxis='y1'),            
-        go.Scatter(x=x_lbls, y=y_vals, 
+        go.Bar(y=ts_ones, x=t_yearly, 
+            marker = dict(color = ts_yearly_normed, colorscale='RdBu_r'),                              
+            name = 'NaN',
+            hoverinfo='none',
+        ),            
+        go.Scatter(x=t_yearly, y=ts_yearly_normed, 
             mode='lines', 
-            line=dict(width=1, color='black'),
-            name='Anomalies'),
+            line=dict(width=2, color='black'),
+            name='Anomaly',
+            hoverinfo='none',                                                                               
+        ),
     ]   
     
     fig = go.Figure(data)
     fig.update_layout(
+        xaxis_title = {'text': 'Year'},
+        yaxis_title = {'text': 'Annual anomaly (from 1961-1990), °C'},        
         xaxis = dict(
-            range = [0, len(yearly)],
+            range = [t_yearly[0], t_yearly[-1]],
             showgrid = False, # thin lines in the background
             zeroline = False, # thick line at x=0
-            visible = False,  # numbers below
+            visible = True,  # numbers below
         ), 
         yaxis = dict(
             range = [0, 1],
             showgrid = False, # thin lines in the background
             zeroline = False, # thick line at x=0
-            visible = False,  # numbers below
+            visible = True,  # numbers below
         ), 
-        showlegend = False,    
+        showlegend = True,    
     )
-    fig.update_layout(height=300, width=700, margin={"r":100,"t":0,"l":40,"b":0})    
-
+    fig.update_yaxes(showticklabels = False) # hide all the xticks        
+    fig.update_layout(height=300, width=700, margin={"r":0,"t":0,"l":40,"b":0})    
+    
     return fig
 
 @app.callback(
@@ -440,9 +462,72 @@ def update_plot_climatology(value):
     return fig
 
 @app.callback(
+    Output(component_id='plot-spiral', component_property='figure'),
+    [Input(component_id='station', component_property='value')],    
+    )
+
+def update_plot_spiral(value):
+    
+    """
+    Plot station spiral using monthly anomalies
+    """
+    
+#    value = 7939, # Death Valley
+#    value = 7934, # Socorro
+
+    da = df_anom[df_anom['stationcode']==df_anom['stationcode'].unique()[value]].iloc[:,range(0,13)]
+    baseline = np.nanmean(np.array(da[(da['year']>=1850)&(da['year']<=1900)].groupby('year').mean()).ravel())    
+    ts_monthly = np.array(da.iloc[:,1:13]).ravel() - baseline             
+    mask = np.isfinite(ts_monthly)
+    ts_monthly_min = ts_monthly[mask].min()    
+    ts_monthly = ts_monthly - ts_monthly_min    
+    
+    n = len(da)
+    colors = cmocean.cm.balance(np.linspace(0.05,0.95,n)) 
+    hexcolors = [ "#{:02x}{:02x}{:02x}".format(int(colors[i][0]*255),int(colors[i][1]*255),int(colors[i][2]*255)) for i in range(len(colors)) ]
+    
+    data = []
+    for k in range(len(da)):
+        trace=[go.Scatterpolar(              
+            r = np.array(da[da['year']==da.iloc[k][0].astype('int')].iloc[:,1:13]).ravel() - baseline - ts_monthly_min,            
+#            theta = np.linspace(0, 2*np.pi, 12),
+            theta = np.linspace(0, 360, 12),
+            mode='lines', 
+            line=dict(width=1, color=hexcolors[k]),
+            name=str(da.iloc[k][0].astype('int')),
+        )]
+        data = data + trace
+
+    fig = go.Figure(data)
+    
+    fig.update_layout(
+#        title = "Global Temperature Change ("+str(da.iloc[0][0].astype('int'))+"-"+str(da.iloc[-1][0].astype('int'))+")",        
+#        template = "plotly_dark",
+        template = None,
+        showlegend = True,
+        polar = dict(
+            radialaxis = dict(range=[0, 15], showticklabels=True, ticks=''),
+            angularaxis = dict(showticklabels=False, ticks='')
+        ),
+    )
+    fig.update_layout(height=300, width=600, margin={"r":50,"t":30,"l":50,"b":50})    
+    
+#    for i in range(len(da)):
+#        r = np.array(da[da['year']==da.iloc[i][0].astype('int')].iloc[:,1:13]).ravel() - baseline - ts_monthly_min            
+#        theta = np.linspace(0, 2*np.pi, 12)
+#        ax1.grid(False)
+#        ax1.set_ylim(0, 15)
+#        ax1.patch.set_facecolor('#000100')
+#        ax1.text(0,0, str(da.iloc[0][0].astype('int')), color='white', size=30, ha='center')            
+#        ax1.plot(theta, r, c=hexcolors[i])
+#    ax1.text(theta[np.isfinite(r)][-1], r[np.isfinite(r)][-1], str(da.iloc[0][0].astype('int')), color='white', size=30, ha='center')            
+
+    return fig
+    
+@app.callback(
     Output(component_id='plot-worldmap', component_property='figure'),
     [Input(component_id='station', component_property='value')])
-    
+
 def update_plot_worldmap(value):
     
     """
