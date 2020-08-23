@@ -405,6 +405,61 @@ else:
     df_norm.to_pickle('df_norm.pkl', compression='bz2')
 
 #------------------------------------------------------------------------------
+# Climate Spiral
+# http://www.climate-lab-book.ac.uk/spirals/
+#------------------------------------------------------------------------------
+    
+if plot_spiral == True:
+
+    print('plot_spiral ...')
+
+    value = 7939, # Death Valley
+
+    """
+    Plot station spiral using monthly anomalies
+    """
+    
+    da = df_anom[df_anom['stationcode']==df_anom['stationcode'].unique()[value]].iloc[:,range(0,13)]
+    baseline = np.nanmean(np.array(da[(da['year']>=1850)&(da['year']<=1900)].groupby('year').mean()).ravel())    
+    ts_monthly = np.array(da.iloc[:,1:13]).ravel() - baseline             
+    mask = np.isfinite(ts_monthly)
+    ts_monthly_min = ts_monthly[mask].min()    
+    ts_monthly = ts_monthly - ts_monthly_min    
+    
+    n = len(da)
+    colors = cmocean.cm.balance(np.linspace(0.05,0.95,n)) 
+    hexcolors = [ "#{:02x}{:02x}{:02x}".format(int(colors[i][0]*255),int(colors[i][1]*255),int(colors[i][2]*255)) for i in range(len(colors)) ]
+    
+    fig = plt.figure(figsize=(14,14))
+    ax1 = plt.subplot(111, projection='polar')
+    ax1.axes.get_yaxis().set_ticklabels([])
+    ax1.axes.get_xaxis().set_ticklabels([])
+    fig.set_facecolor("#323331")
+
+    for i in range(len(da)):
+        r = np.array(da[da['year']==da.iloc[i][0].astype('int')].iloc[:,1:13]).ravel() - baseline - ts_monthly_min            
+        theta = np.linspace(0, 2*np.pi, 12)
+        ax1.grid(False)
+#        ax1.set_title("Global Temperature Change ("+str(da.iloc[0][0].astype('int'))+"-"+str(da.iloc[-1][0].astype('int'))+")", color='white', fontdict={'fontsize':fontsize})
+        ax1.set_ylim(0, 15)
+        ax1.patch.set_facecolor('#000100')
+        ax1.text(0,0, str(da.iloc[0][0].astype('int')), color='white', size=30, ha='center')            
+        ax1.plot(theta, r, c=hexcolors[i])
+    ax1.text(theta[np.isfinite(r)][-1], r[np.isfinite(r)][-1], str(da.iloc[0][0].astype('int')), color='white', size=30, ha='center')            
+
+#    full_circle_thetas = np.linspace(0, 2*np.pi, 1000)  
+#    blue_line_one_radii = [1.0]*1000
+#    red_line_one_radii = [2.5]*1000
+#    red_line_two_radii = [3.0]*1000
+#    ax1.plot(full_circle_thetas, blue_line_one_radii, c='blue')
+#    ax1.plot(full_circle_thetas, red_line_one_radii, c='red')
+#    ax1.plot(full_circle_thetas, red_line_two_radii, c='red')
+#    ax1.text(np.pi/2, 1.0, "0.0 C", color="blue", ha='center', fontdict={'fontsize': 20})
+#    ax1.text(np.pi/2, 2.5, "1.5 C", color="red", ha='center', fontdict={'fontsize': 20})
+#    ax1.text(np.pi/2, 3.0, "2.0 C", color="red", ha='center', fontdict={'fontsize': 20})
+    plt.savefig('climate-spiral.png')
+
+#------------------------------------------------------------------------------
 # Climate Stripes
 # https://showyourstripes.info/
 #------------------------------------------------------------------------------
