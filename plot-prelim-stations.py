@@ -74,15 +74,16 @@ station_start=0;  station_end=10
 load_df_temp = True
 load_df_anom = True
 load_df_norm = True
+plot_stripes = True
 plot_klib = False
 plot_gap_analysis = False
-plot_temporal_coverage = True
-plot_spatial_coverage = True
-plot_seasonal_anomalies = True
-plot_station_timeseres = True
-plot_station_climatology = True
-plot_station_locations = True
-plot_delta_cc = True
+plot_temporal_coverage = False
+plot_spatial_coverage = False
+plot_seasonal_anomalies = False
+plot_station_timeseres = False
+plot_station_climatology = False
+plot_station_locations = False
+plot_delta_cc = False
 delta_cc_20C = True    
 
 #------------------------------------------------------------------------------
@@ -402,7 +403,62 @@ else:
     print('save normalized anomalies ...')
 
     df_norm.to_pickle('df_norm.pkl', compression='bz2')
+
+#------------------------------------------------------------------------------
+# Climate Stripes
+# https://showyourstripes.info/
+#------------------------------------------------------------------------------
     
+if plot_stripes == True:
+
+    print('plot_stripes ...')
+
+    value = 7939, # Death Valley
+
+    # Calculate 1961-1990 mean (cf: Ed's Climate Stripes: 1971-2000)
+
+    da = df_temp[df_temp['stationcode']==df_anom['stationcode'].unique()[value]]
+    monthly = np.array(da.iloc[:,1:13]).ravel()
+             
+    yearly=(da.groupby('year').mean().iloc[:,0:12]).dropna().mean(axis=1)    
+#   yearly = np.nanmean(np.array(da.groupby('year').mean().iloc[:,0:12]),axis=1)                
+    mu = np.nanmean(np.array(da[(da['year']>=1961) & (da['year']<=1990)].iloc[:,1:13].dropna()).ravel())
+
+    # Compute 1900-2000 standard deviation: color range +/- 2.6 standard deviations 
+
+#    sigma = np.nanstd(yearly[(yearly.index>=1900)&(yearly.index<=2000)])
+    sigma = np.nanstd(yearly)
+    
+    x = yearly.index
+    y = yearly
+    z = (y-mu)*0.0+1.0
+    cmap = plt.cm.get_cmap('coolwarm')
+#    cmap = cmocean.cm.balance(np.linspace(0.05,0.95,n)) 
+    maxval = +2.6 * sigma
+    minval = -2.6 * sigma
+
+    n = len(y)            
+    colors = cmocean.cm.balance(np.linspace(0.05,0.95,n)) 
+    hexcolors = [ "#{:02x}{:02x}{:02x}".format(int(colors[i][0]*255),int(colors[i][1]*255),int(colors[i][2]*255)) for i in range(len(colors)) ]
+    colors = cmap((y-mu)/maxval+0.5)
+
+    fig, ax = plt.subplots(figsize=(15,10))
+#    ax.bar(x, z, color=colors, width=1.0)    
+    ax.bar(x, y-mu, color=colors)    
+    ax.axis('off')
+    sm = ScalarMappable(cmap=cmap, norm=plt.Normalize(min(y-mu),max(y-mu)))
+    sm.set_array([])
+    use_horizontal_colorbar = False
+    if use_horizontal_colorbar == True:
+        cbar = plt.colorbar(sm, shrink=0.5, orientation='horizontal')
+        cbar.set_label('Mean annual anomaly (from 1961-1990)', rotation=0, labelpad=25, fontsize=fontsize)
+    else:
+        cbar = plt.colorbar(sm, shrink=0.5)
+        cbar.set_label('Anomaly (from 1961-1990)', rotation=270, labelpad=25, fontsize=fontsize)
+    plt.title('station-stripes', fontsize=fontsize)
+    plt.savefig('station-stripes.png')
+    plt.close(fig)
+
 #------------------------------------------------------------------------------
 # KLIB: data summary:
 # https://github.com/akanz1/klib    
