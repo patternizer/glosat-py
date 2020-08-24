@@ -306,7 +306,7 @@ def update_plot_timeseries(value):
         xaxis_title = {'text': 'Year'},
         yaxis_title = {'text': 'Temperature anomaly, °C'},
     )
-    fig.update_layout(height=300, width=700, margin={"r":0,"t":0,"l":10,"b":0})    
+    fig.update_layout(height=300, width=700, margin={"r":10,"t":10,"l":10,"b":10})    
 
     return fig
 
@@ -319,10 +319,8 @@ def update_plot_stripes(value):
     
     """
     Plot station stripes
+    https://showyourstripes.info/
     """
-
-#    value = 7939, # Death Valley
-#    value = 7934, # Socorro
 
     da = df_temp[df_temp['stationcode']==df_temp['stationcode'].unique()[value]].iloc[:,range(0,13)]
     ts_yearly = []    
@@ -352,7 +350,7 @@ def update_plot_stripes(value):
     n = len(ts_yearly)            
 
     #--------------------------------------------------------------------------
-    # ZEKE HAUSFATHER: many thanks for colorscale normalisation scheme
+    # Mod of Zeke Hausfather's colorscale mapping that caters also for NaN
     #--------------------------------------------------------------------------
     mask = np.isfinite(ts_yearly)
     ts_yearly_min = ts_yearly[mask].min()    
@@ -419,7 +417,7 @@ def update_plot_stripes(value):
         showlegend = True,    
     )
     fig.update_yaxes(showticklabels = False) # hide all the xticks        
-    fig.update_layout(height=300, width=700, margin={"r":0,"t":0,"l":40,"b":0})    
+    fig.update_layout(height=300, width=700, margin={"r":10,"t":10,"l":50,"b":10})    
     
     return fig
 
@@ -457,7 +455,7 @@ def update_plot_climatology(value):
         yaxis_title = {'text': 'Monthly temperature, °C'},
 #        title = {'text': 'Seasonal cycle', 'x':0.5, 'y':0.925, 'xanchor': 'center', 'yanchor': 'top'}
     )
-    fig.update_layout(height=300, width=600, margin={"r":0,"t":0,"l":10,"b":0})
+    fig.update_layout(height=300, width=600, margin={"r":10,"t":10,"l":10,"b":10})
     
     return fig
 
@@ -469,19 +467,29 @@ def update_plot_climatology(value):
 def update_plot_spiral(value):
     
     """
-    Plot station spiral using monthly anomalies
+    Plot station climate spiral of monthly or yearly mean anomaly from min:
+    # http://www.climate-lab-book.ac.uk/spirals/    
     """
     
-#    value = 7939, # Death Valley
-#    value = 7934, # Socorro
-
     da = df_anom[df_anom['stationcode']==df_anom['stationcode'].unique()[value]].iloc[:,range(0,13)]
     baseline = np.nanmean(np.array(da[(da['year']>=1850)&(da['year']<=1900)].groupby('year').mean()).ravel())    
     ts_monthly = np.array(da.iloc[:,1:13]).ravel() - baseline             
     mask = np.isfinite(ts_monthly)
     ts_monthly_min = ts_monthly[mask].min()    
     ts_monthly = ts_monthly - ts_monthly_min    
-    
+
+    ts_yearly = []    
+    for i in range(len(da)):            
+        if da.iloc[i,1:].isnull().any():
+            yearly = np.nan
+        else:
+            yearly = np.nanmean(da.iloc[i,1:])
+        ts_yearly.append(yearly)   
+    t_yearly = pd.date_range(start=str(da['year'].iloc[0]), periods=len(ts_yearly), freq='A')   
+    mask = np.isfinite(ts_yearly)
+    ts_yearly_min = np.nanmin(np.array(ts_yearly)[mask])
+    ts_yearly = ts_yearly - ts_yearly_min
+            
     n = len(da)
     colors = cmocean.cm.balance(np.linspace(0.05,0.95,n)) 
     hexcolors = [ "#{:02x}{:02x}{:02x}".format(int(colors[i][0]*255),int(colors[i][1]*255),int(colors[i][2]*255)) for i in range(len(colors)) ]
@@ -489,39 +497,34 @@ def update_plot_spiral(value):
     data = []
     for k in range(len(da)):
         trace=[go.Scatterpolar(              
-            r = np.array(da[da['year']==da.iloc[k][0].astype('int')].iloc[:,1:13]).ravel() - baseline - ts_monthly_min,            
+#            r = np.array(da[da['year']==da.iloc[k][0].astype('int')].iloc[:,1:13]).ravel() - baseline - ts_monthly_min,            
+            r = np.tile(ts_yearly[k],12),      
 #            theta = np.linspace(0, 2*np.pi, 12),
             theta = np.linspace(0, 360, 12),
-            mode='lines', 
-            line=dict(width=1, color=hexcolors[k]),
-            name=str(da.iloc[k][0].astype('int')),
+            mode = 'lines', 
+            line = dict(width=1, color=hexcolors[k]),
+            name = str(da.iloc[k][0].astype('int')),
+#            fill = 'toself',
+#            fillcolor = hexcolors[k],
         )]
         data = data + trace
 
     fig = go.Figure(data)
     
     fig.update_layout(
-#        title = "Global Temperature Change ("+str(da.iloc[0][0].astype('int'))+"-"+str(da.iloc[-1][0].astype('int'))+")",        
+        title = "Yearly anomaly from minimum ("+str(da.iloc[0][0].astype('int'))+"-"+str(da.iloc[-1][0].astype('int'))+")",        
 #        template = "plotly_dark",
         template = None,
         showlegend = True,
         polar = dict(
-            radialaxis = dict(range=[0, 15], showticklabels=True, ticks=''),
-            angularaxis = dict(showticklabels=False, ticks='')
+#            radialaxis = dict(range=[0, 15], showticklabels=True, ticks=''),
+            radialaxis = dict(range=[0, 3], showticklabels=True, ticks=''),
+            angularaxis = dict(showticklabels=False, ticks=''),
         ),
+#        annotations=[dict(x=0, y=0, text=str(da.iloc[0][0].astype('int')))],        
     )
     fig.update_layout(height=300, width=600, margin={"r":50,"t":30,"l":50,"b":50})    
     
-#    for i in range(len(da)):
-#        r = np.array(da[da['year']==da.iloc[i][0].astype('int')].iloc[:,1:13]).ravel() - baseline - ts_monthly_min            
-#        theta = np.linspace(0, 2*np.pi, 12)
-#        ax1.grid(False)
-#        ax1.set_ylim(0, 15)
-#        ax1.patch.set_facecolor('#000100')
-#        ax1.text(0,0, str(da.iloc[0][0].astype('int')), color='white', size=30, ha='center')            
-#        ax1.plot(theta, r, c=hexcolors[i])
-#    ax1.text(theta[np.isfinite(r)][-1], r[np.isfinite(r)][-1], str(da.iloc[0][0].astype('int')), color='white', size=30, ha='center')            
-
     return fig
     
 @app.callback(
@@ -553,7 +556,7 @@ def update_plot_worldmap(value):
 #    fig.update_layout(mapbox_style="stamen-watercolor", mapbox_center_lat=lat[0], mapbox_center_lon=lon[0]) 
 #    fig.update_layout(mapbox_style="stamen-terrain", mapbox_center_lat=lat[0], mapbox_center_lon=lon[0]) 
 #    fig.update_layout(title={'text': 'Location', 'x':0.5, 'y':0.925, 'xanchor': 'center', 'yanchor': 'top'})
-    fig.update_layout(height=200, width=600, margin={"r":80,"t":0,"l":40,"b":0})
+    fig.update_layout(height=200, width=600, margin={"r":80,"t":10,"l":40,"b":10})
     
     return fig
 
