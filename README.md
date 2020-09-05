@@ -1,6 +1,6 @@
 # glosat-py
 
-Python dataviz tools for reading and plotting [GloSAT](https://www.glosat.org) datasets:
+Experimental python dataviz tools for reading, plotting and inspecting station data for [GloSAT](https://www.glosat.org):
 
 * python reader for GloSATp01 station database (.txt version)
 * plot GloSATp01 station level monthly timeseries
@@ -9,7 +9,7 @@ Python dataviz tools for reading and plotting [GloSAT](https://www.glosat.org) d
 * plot mean annual anomaly climate stripes (1900-2019) from 1961-1990 baseline
 * plot global mean annual anomaly maps
 
-[Plotly Python Reactive Dash app](https://patternizer-crutem5.herokuapp.com) for inspecting station timeseries, monthly climatology and location.
+[Plotly Python Reactive Dash app](https://patternizer-crutem5.herokuapp.com) for inspecting station timeseries, monthly climatology and location. 
 
 ## Contents
 
