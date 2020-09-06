@@ -114,17 +114,16 @@ fontsize = 12
 
 #df_temp = pd.read_csv('df_temp.csv', index_col=0)
 #df_anom = pd.read_csv('df_anom.csv', index_col=0)
-#df_temp = pd.read_pickle('df_temp.pkl', compression='bz2')
-#df_anom = pd.read_pickle('df_anom.pkl', compression='bz2')
+df_temp = pd.read_pickle('df_temp.pkl', compression='bz2')
+df_anom = pd.read_pickle('df_anom.pkl', compression='bz2')
 
-df_temp_in = pd.read_pickle('df_temp.pkl', compression='bz2')
-df_anom_in = pd.read_pickle('df_anom.pkl', compression='bz2')
-df_normals = pd.read_pickle('df_normals.pkl', compression='bz2')
+#df_temp_in = pd.read_pickle('df_temp.pkl', compression='bz2')
+#df_anom_in = pd.read_pickle('df_anom.pkl', compression='bz2')
+#df_normals = pd.read_pickle('df_normals.pkl', compression='bz2')
+#df_temp = df_temp_in[df_temp_in['stationcode'].isin(df_normals[df_normals['sourcecode']>1]['stationcode'])]
+#df_anom = df_anom_in[df_anom_in['stationcode'].isin(df_normals[df_normals['sourcecode']>1]['stationcode'])]
 
 time.sleep(2) # pause 5 seconds to extract dataframe
-
-df_temp = df_temp_in[df_temp_in['stationcode'].isin(df_normals[df_normals['sourcecode']>1]['stationcode'])]
-df_anom = df_anom_in[df_anom_in['stationcode'].isin(df_normals[df_normals['sourcecode']>1]['stationcode'])]
 stationlon = df_temp['stationlon']
 stationlat = df_temp['stationlat']
 stationcode = df_temp['stationcode'].unique()
