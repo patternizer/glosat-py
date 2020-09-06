@@ -96,14 +96,14 @@ fontsize = 12
 df_temp_in = pd.read_pickle('df_temp.pkl', compression='bz2')
 df_anom_in = pd.read_pickle('df_anom.pkl', compression='bz2')
 df_normals = pd.read_pickle('df_normals.pkl', compression='bz2')
+
+time.sleep(5) # pause 5 seconds to extract dataframe
+
 df_temp = df_temp_in[df_temp_in['stationcode'].isin(df_normals[df_normals['sourcecode']>1]['stationcode'])]
 df_anom = df_anom_in[df_anom_in['stationcode'].isin(df_normals[df_normals['sourcecode']>1]['stationcode'])]
-
-#time.sleep(2) # pause 5 seconds to extract dataframe
 stationlon = df_temp['stationlon']
 stationlat = df_temp['stationlat']
 stationcode = df_temp['stationcode'].unique()
-
 gb = df_temp.groupby(['stationcode'])['stationname'].unique().reset_index()
 stationcodestr = gb['stationcode']
 stationnamestr = gb['stationname'].apply(', '.join).str.lower()
