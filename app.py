@@ -67,7 +67,7 @@ from ctypes import cdll, CDLL
 try:
     cdll.LoadLibrary("libc.so.6")
     libc = CDLL("libc.so.6")
-    libc.malloc_trim(0)
+#    libc.malloc_trim(0)
 except (OSError, AttributeError):
     libc = None
 
@@ -76,13 +76,13 @@ __old_del = getattr(pd.DataFrame, '__del__', None)
 def __new_del(self):
     if __old_del:
         __old_del(self)
-    libc.malloc_trim(0)
+#    libc.malloc_trim(0)
 
 if libc:
-    print('Applying monkeypatch for pd.DataFrame.__del__', file=sys.stderr)
+    print('Applying memory leak patch for pd.DataFrame.__del__', file=sys.stderr)
     pd.DataFrame.__del__ = __new_del
 else:
-    print('Skipping monkeypatch for pd.DataFrame.__del__: libc or malloc_trim() not found', file=sys.stderr)
+    print('Skipping memory leak patch for pd.DataFrame.__del__: libc not found', file=sys.stderr)
 
 # Silence library version notifications
 import warnings
@@ -132,6 +132,7 @@ stationcodestr = gb['stationcode']
 stationnamestr = gb['stationname'].apply(', '.join).str.lower()
 stationstr = stationcodestr + ': ' + stationnamestr
 
+
 #del [[df_temp_in,df_anom_in,df_normals]]
 #gc.collect()
 #df_temp_in=pd.DataFrame()
@@ -164,15 +165,16 @@ opts = [{'label' : stationstr[i], 'value' : i} for i in range(len(stationcode))]
 server = Flask(__name__)
 server.secret_key = os.environ.get('secret_key', str(randint(0, 1000000)))
 #external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
-external_stylesheets = [dbc.themes.BOOTSTRAP]
+#external_stylesheets = [dbc.themes.BOOTSTRAP]
+external_stylesheets=[dbc.themes.DARKLY]
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets, server=server)
 app.config.suppress_callback_exceptions = True
-
 app.layout = html.Div(children=[
-            
+
 # ------------
     html.H1(children='GloSAT-py',            
             style={'padding' : '10px', 'width': '100%', 'display': 'inline-block'},
+#           style={'backgroundColor':'black'}
     ),
 # ------------
             
@@ -180,15 +182,16 @@ app.layout = html.Div(children=[
     html.Div([
         dbc.Row([
             # ------------
-            dbc.Col(html.Div([                    
+            dbc.Col(html.Div([   
+                html.Br(),
                 dcc.Dropdown(
                     id = "station",
 #                    placeholder="type id or name",
                     options = opts,           
                     value = 0,
-                    style = {'padding' : '10px', 'width': '100%', 'display': 'inline-block'},
+                    style = {"color": "black", 'padding' : '10px', 'width': '100%', 'display': 'inline-block'},
                 ),                                    
-            ]), 
+            ], className="dash-bootstrap"), 
 #            width={'size':2}, 
             width={'size':6}, 
             ),         
@@ -197,13 +200,6 @@ app.layout = html.Div(children=[
 
             html.Div([
                 dcc.Graph(id="station-info"),
-#                html.Label(['Dataset: ', html.A('CRUTEM5.1 v=prelim01', href='https://catalogue.ceda.ac.uk/uuid/eeabb5e1ff2140f48e76ea1ffda6bb48'), ' by ', html.A('UEA-CRU, UEA-NCAS, MO-HC', href='https://crudata.uea.ac.uk/cru/data/temperature/')]),            
-#                html.Label(['Dataviz: ', html.A('Github', href='https://github.com/patternizer/glosat-py'), ' by ', html.A('patternizer', href='https://patternizer.github.io')]),    
-                html.Label(['Status: Experimental']),
-                html.Br(),
-                html.Label(['Dataset: GloSATp01']),
-                html.Br(),
-                html.Label(['Dataviz: ', html.A('Github', href='https://github.com/patternizer/glosat-py'), ' (dev)']),                
             ],
             style = {'padding' : '10px', 'width': '100%', 'display': 'inline-block'}),    
 
@@ -231,7 +227,6 @@ app.layout = html.Div(children=[
             width={'size':6}, 
             ),                        
             dbc.Col(html.Div([
-#                dcc.Graph(id="plot-spiral", style = {'padding' : '10px', 'width': '100%', 'display': 'inline-block'}),                                 
                 dcc.Graph(id="plot-worldmap", style = {'padding' : '10px', 'width': '100%', 'display': 'inline-block'}),                                 
             ]), 
             width={'size':6}, 
@@ -251,6 +246,32 @@ app.layout = html.Div(children=[
             ),                        
             dbc.Col(html.Div([
                 dcc.Graph(id="plot-climatology", style = {'padding' : '10px', 'width': '100%', 'display': 'inline-block'}),                                 
+            ]), 
+            width={'size':6}, 
+            ),            
+        ]),
+    ]),
+# ------------
+
+# ------------
+    html.Div([
+        dbc.Row([
+            # ------------
+            dbc.Col(html.Div([     
+
+                html.Br(),
+                html.Label(['Status: Experimental']),
+                html.Br(),
+                html.Label(['Dataset: GloSATp01']),
+                html.Br(),
+                html.Label(['Dataviz: ', html.A('Github', href='https://github.com/patternizer/glosat-py'), ' (dev)']),                
+            ],
+            style = {'padding' : '10px', 'width': '100%', 'display': 'inline-block'}),    
+            width={'size':6}, 
+            ),
+
+            dbc.Col(html.Div([
+                dcc.Graph(id="plot-spiral", style = {'padding' : '10px', 'width': '100%', 'display': 'inline-block'}),                                 
             ]), 
             width={'size':6}, 
             ),            
@@ -284,9 +305,10 @@ def update_station_info(value):
                                   
     data = [
         go.Table(
-            header=dict(values=['Latitude [°N]','Longitude [°E]','Elevation AMSL [m]','Station','Country'],
+            header=dict(values=['Latitude [°N]','Longitude [°E]','Elev. AMSL [m]','Station','Country'],
                 line_color='darkslategray',
                 fill_color='lightgrey',
+                font = dict(color='Black'),
                 align='left'),
             cells=dict(values=[
                     [str(lat)], 
@@ -295,12 +317,15 @@ def update_station_info(value):
                     [station], 
                     [country], 
                 ],
-                line_color='darkslategray',
-                fill_color='white',
+#                line_color='darkslategray',
+#                fill_color='white',
+                line_color='slategray',
+                fill_color='black',
+                font = dict(color='white'),
                 align='left')
         ),
     ]
-    layout = go.Layout(  height=140, width=600, margin=dict(r=50, l=0, b=0, t=0))
+    layout = go.Layout(template = "plotly_dark", height=100, width=600, margin=dict(r=10, l=10, b=10, t=10))
 
     return {'data': data, 'layout':layout} 
 
@@ -327,8 +352,7 @@ def update_plot_timeseries(value):
     ts_yearly = []    
     ts_yearly_sd = []    
     for i in range(len(da)):            
-        if da.iloc[i,1:].isnull().any():
-#        if da.iloc[i,1:].isnull().all():
+        if da.iloc[i,1:].isnull().all():
             yearly = np.nan
             yearly_sd = np.nan
         else:
@@ -367,6 +391,8 @@ def update_plot_timeseries(value):
     
     fig = go.Figure(data)
     fig.update_layout(
+        template = "plotly_dark",
+#        template = None,
 #        xaxis = dict(range=[t_yearly[np.isfinite(ts_yearly)][0], t_yearly[np.isfinite(ts_yearly)][-1]]),       
         xaxis = dict(range=[t_yearly[0],t_yearly[-1]]),       
         xaxis_title = {'text': 'Year'},
@@ -467,6 +493,8 @@ def update_plot_stripes(value):
     
     fig = go.Figure(data)
     fig.update_layout(
+        template = "plotly_dark",
+#        template = None,
         xaxis_title = {'text': 'Year'},
         yaxis_title = {'text': 'Annual anomaly (from 1961-1990), °C'},        
         xaxis = dict(
@@ -511,7 +539,8 @@ def update_plot_climatology(value):
 
     data = []
     for k in range(len(Y.T)):
-        if Y.iloc[:,k].isnull().any():
+#        if Y.iloc[:,k].isnull().any():
+        if Y.iloc[:,k].isnull().all():
             yearly = np.nan
         else:
             trace=[go.Scatter(                      
@@ -524,6 +553,8 @@ def update_plot_climatology(value):
 
     fig = go.Figure(data)
     fig.update_layout(
+        template = "plotly_dark",
+#        template = None,
         xaxis_title = {'text': 'Month'},
         yaxis_title = {'text': 'Monthly temperature, °C'},
 #        title = {'text': 'Seasonal cycle', 'x':0.5, 'y':0.925, 'xanchor': 'center', 'yanchor': 'top'}
@@ -576,8 +607,8 @@ def update_plot_spiral(value):
             continue
         else:
             trace=[go.Scatterpolar(              
-#            r = np.array(da[da['year']==da.iloc[k][0].astype('int')].iloc[:,1:13]).ravel() - baseline - ts_monthly_min,            
-            r = np.tile(ts_yearly[k],12),      
+            r = np.array(da[da['year']==da.iloc[k][0].astype('int')].iloc[:,1:13]).ravel() - baseline - ts_monthly_min,            
+#            r = np.tile(ts_yearly[k],12),      
 #            theta = np.linspace(0, 2*np.pi, 12),
             theta = np.linspace(0, 360, 12),
             mode = 'lines', 
@@ -591,9 +622,11 @@ def update_plot_spiral(value):
     fig = go.Figure(data)
     
     fig.update_layout(
-        title = "Yearly anomaly from minimum ("+str(da.iloc[0][0].astype('int'))+"-"+str(da.iloc[-1][0].astype('int'))+")",        
-#        template = "plotly_dark",
-        template = None,
+#        title = "Monthly anomaly from minimum ("+str(da.iloc[0][0].astype('int'))+"-"+str(da.iloc[-1][0].astype('int'))+")",        
+#        title = {'text': 'Seasonal cycle', 'x':0.5, 'y':0.925, 'xanchor': 'center', 'yanchor': 'top'}
+        title = {'text': "Monthly anomaly from minimum ("+str(da.iloc[0][0].astype('int'))+"-"+str(da.iloc[-1][0].astype('int'))+")", 'x':0.5, 'y':0.925, 'xanchor':'center', 'yanchor': 'top'},        
+        template = "plotly_dark",
+#        template = None,
         showlegend = True,
         polar = dict(
 #            radialaxis = dict(range=[0, 15], showticklabels=True, ticks=''),
@@ -602,7 +635,7 @@ def update_plot_spiral(value):
         ),
 #        annotations=[dict(x=0, y=0, text=str(da.iloc[0][0].astype('int')))],        
     )
-    fig.update_layout(height=300, width=600, margin={"r":50,"t":30,"l":50,"b":50})    
+    fig.update_layout(height=300, width=600, margin={"r":80,"t":50,"l":50,"b":60})
     
     return fig
     
@@ -631,6 +664,10 @@ def update_plot_worldmap(value):
     
 #    fig = go.Figure(go.Densitymapbox(lat=lat, lon=lon, z=var, radius=10))
     fig = go.Figure(px.scatter_mapbox(lat=lat, lon=lon, color_discrete_sequence=["darkred"], zoom=1))
+    fig.update_layout(
+        template = "plotly_dark",
+#        template = None,
+    )
     fig.update_layout(mapbox_style="carto-positron", mapbox_center_lat=lat[0], mapbox_center_lon=lon[0]) 
 #    fig.update_layout(mapbox_style="stamen-watercolor", mapbox_center_lat=lat[0], mapbox_center_lon=lon[0]) 
 #    fig.update_layout(mapbox_style="stamen-terrain", mapbox_center_lat=lat[0], mapbox_center_lon=lon[0]) 
@@ -644,5 +681,5 @@ def update_plot_worldmap(value):
 ##################################################################################################
 
 if __name__ == "__main__":
-    app.run_server(debug=True)
+    app.run_server(debug=False)
     
