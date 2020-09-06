@@ -60,6 +60,30 @@ import subprocess
 from subprocess import Popen
 import time
 
+# Solving memory leak problem in pandas
+# https://github.com/pandas-dev/pandas/issues/2659#issuecomment-12021083
+import gc
+from ctypes import cdll, CDLL
+try:
+    cdll.LoadLibrary("libc.so.6")
+    libc = CDLL("libc.so.6")
+    libc.malloc_trim(0)
+except (OSError, AttributeError):
+    libc = None
+
+__old_del = getattr(pd.DataFrame, '__del__', None)
+
+def __new_del(self):
+    if __old_del:
+        __old_del(self)
+    libc.malloc_trim(0)
+
+if libc:
+    print('Applying monkeypatch for pd.DataFrame.__del__', file=sys.stderr)
+    pd.DataFrame.__del__ = __new_del
+else:
+    print('Skipping monkeypatch for pd.DataFrame.__del__: libc or malloc_trim() not found', file=sys.stderr)
+
 # Silence library version notifications
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning)
@@ -97,7 +121,7 @@ df_temp_in = pd.read_pickle('df_temp.pkl', compression='bz2')
 df_anom_in = pd.read_pickle('df_anom.pkl', compression='bz2')
 df_normals = pd.read_pickle('df_normals.pkl', compression='bz2')
 
-time.sleep(5) # pause 5 seconds to extract dataframe
+time.sleep(2) # pause 5 seconds to extract dataframe
 
 df_temp = df_temp_in[df_temp_in['stationcode'].isin(df_normals[df_normals['sourcecode']>1]['stationcode'])]
 df_anom = df_anom_in[df_anom_in['stationcode'].isin(df_normals[df_normals['sourcecode']>1]['stationcode'])]
@@ -108,6 +132,12 @@ gb = df_temp.groupby(['stationcode'])['stationname'].unique().reset_index()
 stationcodestr = gb['stationcode']
 stationnamestr = gb['stationname'].apply(', '.join).str.lower()
 stationstr = stationcodestr + ': ' + stationnamestr
+
+del [[df_temp_in,df_anom_in,df_normals]]
+gc.collect()
+df_temp_in=pd.DataFrame()
+df_anom_in=pd.DataFrame()
+df_normals=pd.DataFrame()
 
 # UPDATE: thanks to Stephen Burt
 # ------------------------------
@@ -615,6 +645,5 @@ def update_plot_worldmap(value):
 ##################################################################################################
 
 if __name__ == "__main__":
-    app.run_server(debug=False)
-#    app.run(debug=False, use_reloader=False)    
+    app.run_server(debug=True)
     
