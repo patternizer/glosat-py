@@ -3,8 +3,8 @@
 #------------------------------------------------------------------------------
 # PROGRAM: app.py
 #------------------------------------------------------------------------------
-# Version 0.6
-# 19 August, 2020
+# Version 0.7
+# 5 September, 2020
 # Michael Taylor
 # https://patternizer.github.io
 # patternizer AT gmail DOT com
@@ -90,14 +90,43 @@ fontsize = 12
 
 #df_temp = pd.read_csv('df_temp.csv', index_col=0)
 #df_anom = pd.read_csv('df_anom.csv', index_col=0)
-df_temp = pd.read_pickle('df_temp.pkl', compression='bz2')
-df_anom = pd.read_pickle('df_anom.pkl', compression='bz2')
-time.sleep(5) # pause 5 seconds to extract dataframe
+#df_temp = pd.read_pickle('df_temp.pkl', compression='bz2')
+#df_anom = pd.read_pickle('df_anom.pkl', compression='bz2')
+
+df_temp_in = pd.read_pickle('df_temp.pkl', compression='bz2')
+df_anom_in = pd.read_pickle('df_anom.pkl', compression='bz2')
+df_normals = pd.read_pickle('df_normals.pkl', compression='bz2')
+df_temp = df_temp_in[df_temp_in['stationcode'].isin(df_normals[df_normals['sourcecode']>1]['stationcode'])]
+df_anom = df_anom_in[df_anom_in['stationcode'].isin(df_normals[df_normals['sourcecode']>1]['stationcode'])]
+
+#time.sleep(2) # pause 5 seconds to extract dataframe
 stationlon = df_temp['stationlon']
 stationlat = df_temp['stationlat']
-stationcode = df_temp['stationcode'].str.zfill(6).unique()
+stationcode = df_temp['stationcode'].unique()
 
-opts = [{'label' : stationcode[i], 'value' : i} for i in range(len(stationcode))]
+gb = df_temp.groupby(['stationcode'])['stationname'].unique().reset_index()
+stationcodestr = gb['stationcode']
+stationnamestr = gb['stationname'].apply(', '.join).str.lower()
+stationstr = stationcodestr + ': ' + stationnamestr
+
+# UPDATE: thanks to Stephen Burt
+# ------------------------------
+#Reading University, London Road
+# stationcode = 037641
+#Jan 1904 - Dec 1967 (daily records to Dec 1907 missing)
+#51.45°N, 0.96°W, 45 m AMSL
+
+#Reading University, Whiteknights
+# stationcode = 037641
+#51.441°N, 0.938°W, 66 m AMSL
+#1 Jan 1968 to date
+
+#Oxford record (Radcliffe Observatory) 
+# stationcode = 038900
+#51.76°N, 1.26°W, altitude 63 m AMSL
+
+opts = [{'label' : stationstr[i], 'value' : i} for i in range(len(stationcode))]
+#opts = [{'label' : stationname[i][0].lower(), 'value' : i} for i in range(len(stationname))]
 
 # ========================================================================
 # Start the App
@@ -125,36 +154,59 @@ app.layout = html.Div(children=[
             dbc.Col(html.Div([                    
                 dcc.Dropdown(
                     id = "station",
+#                    placeholder="type id or name",
                     options = opts,           
-                    value = 7939, # Death Valley
+                    value = 0,
                     style = {'padding' : '10px', 'width': '100%', 'display': 'inline-block'},
                 ),                                    
             ]), 
-            width={'size':2}, 
+#            width={'size':2}, 
+            width={'size':6}, 
             ),         
                
             dbc.Col(
 
             html.Div([
                 dcc.Graph(id="station-info"),
-                html.Br(),
 #                html.Label(['Dataset: ', html.A('CRUTEM5.1 v=prelim01', href='https://catalogue.ceda.ac.uk/uuid/eeabb5e1ff2140f48e76ea1ffda6bb48'), ' by ', html.A('UEA-CRU, UEA-NCAS, MO-HC', href='https://crudata.uea.ac.uk/cru/data/temperature/')]),            
-#                html.Label(['Dataviz: ', html.A('Github', href='https://github.com/patternizer/glosat-py'), ' by ', html.A('patternizer', href='https://patternizer.github.io')]),            
+#                html.Label(['Dataviz: ', html.A('Github', href='https://github.com/patternizer/glosat-py'), ' by ', html.A('patternizer', href='https://patternizer.github.io')]),    
+                html.Label(['Status: Experimental']),
+                html.Br(),
                 html.Label(['Dataset: GloSATp01']),
                 html.Br(),
-                html.Label(['Dataviz: ', html.A('Github', href='https://github.com/patternizer/glosat-py')]),            
+                html.Label(['Dataviz: ', html.A('Github', href='https://github.com/patternizer/glosat-py'), ' (dev)']),                
             ],
             style = {'padding' : '10px', 'width': '100%', 'display': 'inline-block'}),    
 
-            width={'size':4}, 
+ #           width={'size':4}, 
+            width={'size':6}, 
             ),
 
+#            dbc.Col(html.Div([
+#                dcc.Graph(id="plot-worldmap", style = {'padding' : '10px', 'width': '100%', 'display': 'inline-block'}),                                 
+#            ]), 
+#            width={'size':6}, 
+#            ),            
+  
+        ]),
+    ]),
+# ------------
+
+# ------------
+    html.Div([
+        dbc.Row([
+            # ------------
+            dbc.Col(html.Div([                    
+                dcc.Graph(id="plot-stripes", style = {'padding' : '10px', 'width': '100%', 'display': 'inline-block'}),                                      
+            ]), 
+            width={'size':6}, 
+            ),                        
             dbc.Col(html.Div([
+#                dcc.Graph(id="plot-spiral", style = {'padding' : '10px', 'width': '100%', 'display': 'inline-block'}),                                 
                 dcc.Graph(id="plot-worldmap", style = {'padding' : '10px', 'width': '100%', 'display': 'inline-block'}),                                 
             ]), 
             width={'size':6}, 
             ),            
-  
         ]),
     ]),
 # ------------
@@ -170,24 +222,6 @@ app.layout = html.Div(children=[
             ),                        
             dbc.Col(html.Div([
                 dcc.Graph(id="plot-climatology", style = {'padding' : '10px', 'width': '100%', 'display': 'inline-block'}),                                 
-            ]), 
-            width={'size':6}, 
-            ),            
-        ]),
-    ]),
-# ------------
-
-# ------------
-    html.Div([
-        dbc.Row([
-            # ------------
-            dbc.Col(html.Div([                    
-                dcc.Graph(id="plot-stripes", style = {'padding' : '10px', 'width': '100%', 'display': 'inline-block'}),                                      
-            ]), 
-            width={'size':6}, 
-            ),                        
-            dbc.Col(html.Div([
-                dcc.Graph(id="plot-spiral", style = {'padding' : '10px', 'width': '100%', 'display': 'inline-block'}),                                 
             ]), 
             width={'size':6}, 
             ),            
@@ -215,18 +249,20 @@ def update_station_info(value):
 #    code = df_temp[df_temp['stationcode']==stationcode[value]]['stationcode'].iloc[0]
     lat = df_temp[df_temp['stationcode']==stationcode[value]]['stationlat'].iloc[0]
     lon = df_temp[df_temp['stationcode']==stationcode[value]]['stationlon'].iloc[0]
+    elevation = df_temp[df_temp['stationcode']==stationcode[value]]['stationelevation'].iloc[0]
     station = df_temp[df_temp['stationcode']==stationcode[value]]['stationname'].iloc[0]
     country = df_temp[df_temp['stationcode']==stationcode[value]]['stationcountry'].iloc[0]
                                   
     data = [
         go.Table(
-            header=dict(values=['Lat','Lon','Station','Country'],
+            header=dict(values=['Latitude [°N]','Longitude [°E]','Elevation AMSL [m]','Station','Country'],
                 line_color='darkslategray',
                 fill_color='lightgrey',
                 align='left'),
             cells=dict(values=[
                     [str(lat)], 
                     [str(lon)],
+                    [str(elevation)],
                     [station], 
                     [country], 
                 ],
@@ -235,7 +271,7 @@ def update_station_info(value):
                 align='left')
         ),
     ]
-    layout = go.Layout(  height=140, width=400, margin=dict(r=10, l=0, b=0, t=0))
+    layout = go.Layout(  height=140, width=600, margin=dict(r=50, l=0, b=0, t=0))
 
     return {'data': data, 'layout':layout} 
 
@@ -263,6 +299,7 @@ def update_plot_timeseries(value):
     ts_yearly_sd = []    
     for i in range(len(da)):            
         if da.iloc[i,1:].isnull().any():
+#        if da.iloc[i,1:].isnull().all():
             yearly = np.nan
             yearly_sd = np.nan
         else:
@@ -326,6 +363,7 @@ def update_plot_stripes(value):
     ts_yearly = []    
     for i in range(len(da)):            
         if da.iloc[i,1:].isnull().any():
+#        if da.iloc[i,1:].isnull().all():
             yearly = np.nan
         else:
             yearly = np.nanmean(da.iloc[i,1:])
@@ -432,22 +470,28 @@ def update_plot_climatology(value):
     Plot station climatology
     """
 
+#    da = df_temp[df_temp['stationcode']==df_temp['stationcode'].unique()[value]].iloc[:,range(0,13)].dropna()
+#    X = da.iloc[:,0]
+#    Y = da.iloc[:,range(1,13)].T
+
     X = df_temp[df_temp['stationcode']==stationcode[value]].iloc[:,0]
     Y = df_temp[df_temp['stationcode']==stationcode[value]].iloc[:,range(1,13)].T
-
     n = len(Y.T)            
     colors = cmocean.cm.balance(np.linspace(0.05,0.95,n)) 
     hexcolors = [ "#{:02x}{:02x}{:02x}".format(int(colors[i][0]*255),int(colors[i][1]*255),int(colors[i][2]*255)) for i in range(len(colors)) ]
 
     data = []
     for k in range(len(Y.T)):
-        trace=[go.Scatter(              
+        if Y.iloc[:,k].isnull().any():
+            yearly = np.nan
+        else:
+            trace=[go.Scatter(                      
             x=np.arange(1,13), y=Y.iloc[:,k], 
             mode='lines+markers', 
             line=dict(width=1.5, color=hexcolors[k]),
             marker=dict(size=5, opacity=0.5),
             name=str(X.iloc[k]))]
-        data = data + trace
+            data = data + trace
 
     fig = go.Figure(data)
     fig.update_layout(
@@ -472,7 +516,8 @@ def update_plot_spiral(value):
     """
     
     da = df_anom[df_anom['stationcode']==df_anom['stationcode'].unique()[value]].iloc[:,range(0,13)]
-    baseline = np.nanmean(np.array(da[(da['year']>=1850)&(da['year']<=1900)].groupby('year').mean()).ravel())    
+#    baseline = np.nanmean(np.array(da[(da['year']>=1850)&(da['year']<=1900)].groupby('year').mean()).ravel())    
+    baseline = np.nanmean(np.array(da.groupby('year').mean()).ravel())    
     ts_monthly = np.array(da.iloc[:,1:13]).ravel() - baseline             
     mask = np.isfinite(ts_monthly)
     ts_monthly_min = ts_monthly[mask].min()    
@@ -485,6 +530,7 @@ def update_plot_spiral(value):
         else:
             yearly = np.nanmean(da.iloc[i,1:])
         ts_yearly.append(yearly)   
+    ts_yearly = ts_yearly - baseline
     t_yearly = pd.date_range(start=str(da['year'].iloc[0]), periods=len(ts_yearly), freq='A')   
     mask = np.isfinite(ts_yearly)
     ts_yearly_min = np.nanmin(np.array(ts_yearly)[mask])
@@ -496,7 +542,11 @@ def update_plot_spiral(value):
     
     data = []
     for k in range(len(da)):
-        trace=[go.Scatterpolar(              
+
+        if ts_yearly[k] == np.nan:
+            continue
+        else:
+            trace=[go.Scatterpolar(              
 #            r = np.array(da[da['year']==da.iloc[k][0].astype('int')].iloc[:,1:13]).ravel() - baseline - ts_monthly_min,            
             r = np.tile(ts_yearly[k],12),      
 #            theta = np.linspace(0, 2*np.pi, 12),
@@ -506,8 +556,8 @@ def update_plot_spiral(value):
             name = str(da.iloc[k][0].astype('int')),
 #            fill = 'toself',
 #            fillcolor = hexcolors[k],
-        )]
-        data = data + trace
+            )]
+            data = data + trace
 
     fig = go.Figure(data)
     
@@ -518,7 +568,7 @@ def update_plot_spiral(value):
         showlegend = True,
         polar = dict(
 #            radialaxis = dict(range=[0, 15], showticklabels=True, ticks=''),
-            radialaxis = dict(range=[0, 3], showticklabels=True, ticks=''),
+#            radialaxis = dict(range=[0, 3], showticklabels=True, ticks=''),
             angularaxis = dict(showticklabels=False, ticks=''),
         ),
 #        annotations=[dict(x=0, y=0, text=str(da.iloc[0][0].astype('int')))],        
@@ -556,7 +606,7 @@ def update_plot_worldmap(value):
 #    fig.update_layout(mapbox_style="stamen-watercolor", mapbox_center_lat=lat[0], mapbox_center_lon=lon[0]) 
 #    fig.update_layout(mapbox_style="stamen-terrain", mapbox_center_lat=lat[0], mapbox_center_lon=lon[0]) 
 #    fig.update_layout(title={'text': 'Location', 'x':0.5, 'y':0.925, 'xanchor': 'center', 'yanchor': 'top'})
-    fig.update_layout(height=200, width=600, margin={"r":80,"t":10,"l":40,"b":10})
+    fig.update_layout(height=300, width=600, margin={"r":80,"t":10,"l":50,"b":60})
     
     return fig
 
