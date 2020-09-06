@@ -132,11 +132,11 @@ stationcodestr = gb['stationcode']
 stationnamestr = gb['stationname'].apply(', '.join).str.lower()
 stationstr = stationcodestr + ': ' + stationnamestr
 
-del [[df_temp_in,df_anom_in,df_normals]]
-gc.collect()
-df_temp_in=pd.DataFrame()
-df_anom_in=pd.DataFrame()
-df_normals=pd.DataFrame()
+#del [[df_temp_in,df_anom_in,df_normals]]
+#gc.collect()
+#df_temp_in=pd.DataFrame()
+#df_anom_in=pd.DataFrame()
+#df_normals=pd.DataFrame()
 
 # UPDATE: thanks to Stephen Burt
 # ------------------------------
