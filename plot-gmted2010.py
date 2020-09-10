@@ -217,32 +217,32 @@ dg = pd.DataFrame({'lon':x, 'lat':y, 'elevation':z}, index=range(N))
 
 # TEST DIFFERENT METHODS
 
-pt = [51,1]  # <-- the point to find (lat,lon)
+#pt = [51,1]  # <-- the point to find (lat,lon)
 
 # METHOD 1: Find minimum Haversine (accurate but very slow)
-def find_nearest(lat, lon):
-    distances = dg.apply(lambda row: haversine(lat, lon, row['lat'], row['lon']), axis=1)
-    return dg.loc[distances.idxmin(),:]
+#def find_nearest(lat, lon):
+#    distances = dg.apply(lambda row: haversine(lat, lon, row['lat'], row['lon']), axis=1)
+#    return dg.loc[distances.idxmin(),:]
 
-query = find_nearest(pt[0],pt[1]) # --> TOO SLOW!
-lati = query['lat']
-loni = query['lon']
-elevi = query['elevation']
+#query = find_nearest(pt[0],pt[1]) # --> TOO SLOW!
+#lati = query['lat']
+#loni = query['lon']
+#elevi = query['elevation']
 
 # METHOD 2: Find closest sorted lat,lon (fast but error prone)
-def find_index(x,y):
-    xi=np.searchsorted(lat,x)
-    yi=np.searchsorted(lon,y)
-    return xi,yi
+#def find_index(x,y):
+#    xi=np.searchsorted(lat,x)
+#    yi=np.searchsorted(lon,y)
+#    return xi,yi
 
-query = find_index(pt[0],pt[1])
-lati = lat[query[0]]
-loni = lon[query[1]]
-elevi = elevation[query[0],query[1]]
+#query = find_index(pt[0],pt[1])
+#lati = lat[query[0]]
+#loni = lon[query[1]]
+#elevi = elevation[query[0],query[1]]
 
 # METHOD 3: Find closest using SciPy Spatial Tree (fast once tree built and accurate)
 
-#df_nearest = pd.read_pickle('df_nearest.pkl', compression='bz2')    
+#df = pd.read_pickle('df_nearest.pkl', compression='bz2')    
 
 A = list(zip(*map(dg.get, ['lat', 'lon'])))
 tree = spatial.KDTree(A)
@@ -458,12 +458,78 @@ for ax in axs.flat:
     ax.yaxis.grid(True, which='major')                
     ax.label_outer()
 
-#ax.xaxis.grid(True, which='major')        
-#ax.yaxis.grid(True, which='major')        
-#plt.tick_params(labelsize=fontsize)
-#plt.legend()
-#plt.xlabel('Station index', fontsize=fontsize)
-#plt.ylabel('GloSATp01 - GMTED2010 elevation difference, AMSL [m]', fontsize=fontsize)
+fig.suptitle(titlestr, fontsize=fontsize)        
+plt.savefig(figstr)
+plt.close('all')
+
+# PLOT GloSATp01 - GMTED2010 latitude differences for 3x3 nearest grid points
+
+titlestr = 'GloSATp01 - GMTED2010 nearest 3x3 grid latitude differences'
+figstr = 'glosat-gmted2010-3x3-latitude-differences.png'
+
+fig, axs = plt.subplots(3,3,figsize=(15,10))
+axs[0,0].plot(df['stationlat']-df['gmtedlat1'])
+axs[0,1].plot(df['stationlat']-df['gmtedlat2'])
+axs[0,2].plot(df['stationlat']-df['gmtedlat3'])
+axs[1,0].plot(df['stationlat']-df['gmtedlat4'])
+axs[1,1].plot(df['stationlat']-df['gmtedlat5'])
+axs[1,2].plot(df['stationlat']-df['gmtedlat6'])
+axs[2,0].plot(df['stationlat']-df['gmtedlat7'])
+axs[2,1].plot(df['stationlat']-df['gmtedlat8'])
+axs[2,2].plot(df['stationlat']-df['gmtedlat9'])
+axs[0,0].set_title('(n-1,m-1)', fontsize=fontsize)    
+axs[0,1].set_title('(n-1,m)', fontsize=fontsize)    
+axs[0,2].set_title('(n-1,m+1)', fontsize=fontsize)    
+axs[1,0].set_title('(n,m-1)', fontsize=fontsize)    
+axs[1,1].set_title('(n,m)', fontsize=fontsize)    
+axs[1,2].set_title('(n,m+1)', fontsize=fontsize)    
+axs[2,0].set_title('(n+1,m-1)', fontsize=fontsize)    
+axs[2,1].set_title('(n+1,m)', fontsize=fontsize)    
+axs[2,2].set_title('(n+1,m+1)', fontsize=fontsize)    
+for ax in axs.flat:    
+    ax.set_xlabel("Station index", fontsize=fontsize)
+    ax.set_ylabel("GloSATp01-GMTED2010 [°N]", fontsize=fontsize)
+for ax in axs.flat:
+    ax.set_ylim([-0.1,0.1])
+    ax.yaxis.grid(True, which='major')                
+    ax.label_outer()
+
+fig.suptitle(titlestr, fontsize=fontsize)        
+plt.savefig(figstr)
+plt.close('all')
+
+# PLOT GloSATp01 - GMTED2010 longitude differences for 3x3 nearest grid points
+
+titlestr = 'GloSATp01 - GMTED2010 nearest 3x3 grid longitude differences'
+figstr = 'glosat-gmted2010-3x3-longitude-differences.png'
+
+fig, axs = plt.subplots(3,3,figsize=(15,10))
+axs[0,0].plot(df['stationlon']-df['gmtedlon1'])
+axs[0,1].plot(df['stationlon']-df['gmtedlon2'])
+axs[0,2].plot(df['stationlon']-df['gmtedlon3'])
+axs[1,0].plot(df['stationlon']-df['gmtedlon4'])
+axs[1,1].plot(df['stationlon']-df['gmtedlon5'])
+axs[1,2].plot(df['stationlon']-df['gmtedlon6'])
+axs[2,0].plot(df['stationlon']-df['gmtedlon7'])
+axs[2,1].plot(df['stationlon']-df['gmtedlon8'])
+axs[2,2].plot(df['stationlon']-df['gmtedlon9'])
+axs[0,0].set_title('(n-1,m-1)', fontsize=fontsize)    
+axs[0,1].set_title('(n-1,m)', fontsize=fontsize)    
+axs[0,2].set_title('(n-1,m+1)', fontsize=fontsize)    
+axs[1,0].set_title('(n,m-1)', fontsize=fontsize)    
+axs[1,1].set_title('(n,m)', fontsize=fontsize)    
+axs[1,2].set_title('(n,m+1)', fontsize=fontsize)    
+axs[2,0].set_title('(n+1,m-1)', fontsize=fontsize)    
+axs[2,1].set_title('(n+1,m)', fontsize=fontsize)    
+axs[2,2].set_title('(n+1,m+1)', fontsize=fontsize)    
+for ax in axs.flat:    
+    ax.set_xlabel("Station index", fontsize=fontsize)
+    ax.set_ylabel("GloSATp01-GMTED2010 [°E]", fontsize=fontsize)
+for ax in axs.flat:
+    ax.set_ylim([-0.1,0.1])
+    ax.yaxis.grid(True, which='major')                
+    ax.label_outer()
+
 fig.suptitle(titlestr, fontsize=fontsize)        
 plt.savefig(figstr)
 plt.close('all')
