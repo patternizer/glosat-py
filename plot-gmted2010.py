@@ -241,34 +241,233 @@ loni = lon[query[1]]
 elevi = elevation[query[0],query[1]]
 
 # METHOD 3: Find closest using SciPy Spatial Tree (fast once tree built and accurate)
-from scipy import spatial
-#A = np.random.random((10000000,2))*100
+
+#df_nearest = pd.read_pickle('df_nearest.pkl', compression='bz2')    
+
 A = list(zip(*map(dg.get, ['lat', 'lon'])))
 tree = spatial.KDTree(A)
 
-latn = []
-lonn = []
-elevationn = []
-distancen = []
-for i in range(len(df)):
-    pt = [df.loc[i]['stationlat'],df.loc[i]['stationlon']]
-    distance,index = tree.query(pt)    
-    lati = dg.loc[index,:]['lat']
-    loni = dg.loc[index,:]['lon']
-    elevationi = dg.loc[index,:]['elevation']    
-    distancei = distance
-    latn.append(lati)
-    lonn.append(loni)
-    elevationn.append(elevationi)
-    distancen.append(distancei)
+lat1 = []
+lat2 = []
+lat3 = []
+lat4 = []
+lat5 = []
+lat6 = []
+lat7 = []
+lat8 = []
+lat9 = []
 
-df['gmtedlon']=lonn
-df['gmtedlat']=latn
-df['gmtedelevation']=elevationn
-df['gmteddistance']=distancen
+lon1 = []
+lon2 = []
+lon3 = []
+lon4 = []
+lon5 = []
+lon6 = []
+lon7 = []
+lon8 = []
+lon9 = []
+
+elevation1 = []
+elevation2 = []
+elevation3 = []
+elevation4 = []
+elevation5 = []
+elevation6 = []
+elevation7 = []
+elevation8 = []
+elevation9 = []
+
+distance1 = []
+distance2 = []
+distance3 = []
+distance4 = []
+distance5 = []
+distance6 = []
+distance7 = []
+distance8 = []
+distance9 = []
+
+delta = lat[1]-lat[0] # --> 0.0625 degrees (same for lon)
+for i in range(len(df)):
+
+    pt5 = [df.loc[i]['stationlat'],df.loc[i]['stationlon']]
+    distance5i,index5 = tree.query(pt5)    
+    lat5i = dg.loc[index5,:]['lat']
+    lon5i = dg.loc[index5,:]['lon']
+    elevation5i = dg.loc[index5,:]['elevation']    
+
+    # Extract also surrounding 8 points: 
+    # NB: in xarray lat starts at bottom of array
+    # NB: in xarray lon starts at left of array
+    pt1 = [lat5i+delta,lon5i-delta]
+    pt2 = [lat5i+delta,lon5i]
+    pt3 = [lat5i+delta,lon5i+delta]
+    pt4 = [lat5i,lon5i-delta]
+    pt6 = [lat5i,lon5i+delta]
+    pt7 = [lat5i-delta,lon5i-delta]
+    pt8 = [lat5i-delta,lon5i]
+    pt9 = [lat5i-delta,lon5i+delta]
+
+    distance1i,index1 = tree.query(pt1)    
+    distance2i,index2 = tree.query(pt2)    
+    distance3i,index3 = tree.query(pt3)    
+    distance4i,index4 = tree.query(pt4)    
+    distance6i,index6 = tree.query(pt6)    
+    distance7i,index7 = tree.query(pt7)    
+    distance8i,index8 = tree.query(pt8)    
+    distance9i,index9 = tree.query(pt9)    
+
+    lat1i = dg.loc[index1,:]['lat']
+    lat2i = dg.loc[index2,:]['lat']
+    lat3i = dg.loc[index3,:]['lat']
+    lat4i = dg.loc[index4,:]['lat']
+    lat6i = dg.loc[index6,:]['lat']
+    lat7i = dg.loc[index7,:]['lat']
+    lat8i = dg.loc[index8,:]['lat']
+    lat9i = dg.loc[index9,:]['lat']
+
+    lon1i = dg.loc[index1,:]['lon']
+    lon2i = dg.loc[index2,:]['lon']
+    lon3i = dg.loc[index3,:]['lon']
+    lon4i = dg.loc[index4,:]['lon']
+    lon6i = dg.loc[index6,:]['lon']
+    lon7i = dg.loc[index7,:]['lon']
+    lon8i = dg.loc[index8,:]['lon']
+    lon9i = dg.loc[index9,:]['lon']
+
+    elevation1i = dg.loc[index1,:]['elevation']    
+    elevation2i = dg.loc[index2,:]['elevation']    
+    elevation3i = dg.loc[index3,:]['elevation']    
+    elevation4i = dg.loc[index4,:]['elevation']    
+    elevation6i = dg.loc[index6,:]['elevation']    
+    elevation7i = dg.loc[index7,:]['elevation']    
+    elevation8i = dg.loc[index8,:]['elevation']    
+    elevation9i = dg.loc[index9,:]['elevation']    
+    
+    lat1.append(lat1i)
+    lat2.append(lat2i)
+    lat3.append(lat3i)
+    lat4.append(lat4i)
+    lat5.append(lat5i)
+    lat6.append(lat6i)
+    lat7.append(lat7i)
+    lat8.append(lat8i)
+    lat9.append(lat9i)
+
+    lon1.append(lon1i)
+    lon2.append(lon2i)
+    lon3.append(lon3i)
+    lon4.append(lon4i)
+    lon5.append(lon5i)
+    lon6.append(lon6i)
+    lon7.append(lon7i)
+    lon8.append(lon8i)
+    lon9.append(lon9i)
+
+    elevation1.append(elevation1i)
+    elevation2.append(elevation2i)
+    elevation3.append(elevation3i)
+    elevation4.append(elevation4i)
+    elevation5.append(elevation5i)
+    elevation6.append(elevation6i)
+    elevation7.append(elevation7i)
+    elevation8.append(elevation8i)
+    elevation9.append(elevation9i)
+
+    distance1.append(distance1i)
+    distance2.append(distance2i)
+    distance3.append(distance3i)
+    distance4.append(distance4i)
+    distance5.append(distance5i)
+    distance6.append(distance6i)
+    distance7.append(distance7i)
+    distance8.append(distance8i)
+    distance9.append(distance9i)
+
+df['gmtedlon1']=lon1
+df['gmtedlon2']=lon2
+df['gmtedlon3']=lon3
+df['gmtedlon4']=lon4
+df['gmtedlon5']=lon5
+df['gmtedlon6']=lon6
+df['gmtedlon7']=lon7
+df['gmtedlon8']=lon8
+df['gmtedlon9']=lon9
+
+df['gmtedlat1']=lat1
+df['gmtedlat2']=lat2
+df['gmtedlat3']=lat3
+df['gmtedlat4']=lat4
+df['gmtedlat5']=lat5
+df['gmtedlat6']=lat6
+df['gmtedlat7']=lat7
+df['gmtedlat8']=lat8
+df['gmtedlat9']=lat9
+
+df['gmtedelevation1']=elevation1
+df['gmtedelevation2']=elevation2
+df['gmtedelevation3']=elevation3
+df['gmtedelevation4']=elevation4
+df['gmtedelevation5']=elevation5
+df['gmtedelevation6']=elevation6
+df['gmtedelevation7']=elevation7
+df['gmtedelevation8']=elevation8
+df['gmtedelevation9']=elevation9
+
+df['gmteddistance1']=distance1
+df['gmteddistance2']=distance2
+df['gmteddistance3']=distance3
+df['gmteddistance4']=distance4
+df['gmteddistance5']=distance5
+df['gmteddistance6']=distance6
+df['gmteddistance7']=distance7
+df['gmteddistance8']=distance8
+df['gmteddistance9']=distance9
 
 df.to_pickle('df_nearest.pkl', compression='bz2')
         
+# PLOT GloSATp01 - GMTED2010 elevation differences for 3x3 nearest grid points
+
+titlestr = 'GloSATp01 - GMTED2010 nearest 3x3 grid elevation differences'
+figstr = 'glosat-gmted2010-3x3-elevation-differences.png'
+
+fig, axs = plt.subplots(3,3,figsize=(15,10))
+axs[0,0].plot(df['stationelevation']-df['gmtedelevation1'])
+axs[0,1].plot(df['stationelevation']-df['gmtedelevation2'])
+axs[0,2].plot(df['stationelevation']-df['gmtedelevation3'])
+axs[1,0].plot(df['stationelevation']-df['gmtedelevation4'])
+axs[1,1].plot(df['stationelevation']-df['gmtedelevation5'])
+axs[1,2].plot(df['stationelevation']-df['gmtedelevation6'])
+axs[2,0].plot(df['stationelevation']-df['gmtedelevation7'])
+axs[2,1].plot(df['stationelevation']-df['gmtedelevation8'])
+axs[2,2].plot(df['stationelevation']-df['gmtedelevation9'])
+axs[0,0].set_title('(n-1,m-1)', fontsize=fontsize)    
+axs[0,1].set_title('(n-1,m)', fontsize=fontsize)    
+axs[0,2].set_title('(n-1,m+1)', fontsize=fontsize)    
+axs[1,0].set_title('(n,m-1)', fontsize=fontsize)    
+axs[1,1].set_title('(n,m)', fontsize=fontsize)    
+axs[1,2].set_title('(n,m+1)', fontsize=fontsize)    
+axs[2,0].set_title('(n+1,m-1)', fontsize=fontsize)    
+axs[2,1].set_title('(n+1,m)', fontsize=fontsize)    
+axs[2,2].set_title('(n+1,m+1)', fontsize=fontsize)    
+for ax in axs.flat:    
+    ax.set_xlabel("Station index", fontsize=fontsize)
+    ax.set_ylabel("GloSATp01-GMTED2010 [m]", fontsize=fontsize)
+for ax in axs.flat:
+    ax.set_ylim([-5000,2000])
+    ax.yaxis.grid(True, which='major')                
+    ax.label_outer()
+
+#ax.xaxis.grid(True, which='major')        
+#ax.yaxis.grid(True, which='major')        
+#plt.tick_params(labelsize=fontsize)
+#plt.legend()
+#plt.xlabel('Station index', fontsize=fontsize)
+#plt.ylabel('GloSATp01 - GMTED2010 elevation difference, AMSL [m]', fontsize=fontsize)
+fig.suptitle(titlestr, fontsize=fontsize)        
+plt.savefig(figstr)
+plt.close('all')
+
 #--------------------------------------------------------
 # PLOT ELEVATION MAP: GloSATp01: delaunay intepolation
 #--------------------------------------------------------
