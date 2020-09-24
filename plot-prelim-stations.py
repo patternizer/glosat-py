@@ -4,8 +4,8 @@
 #------------------------------------------------------------------------------
 # PROGRAM: plot-prelim-stations.py
 #------------------------------------------------------------------------------
-# Version 0.13
-# 2 September, 2020
+# Version 0.14
+# 22 September, 2020
 # Michael Taylor
 # https://patternizer.github.io
 # patternizer AT gmail DOT com
@@ -20,8 +20,10 @@ import numpy.ma as ma
 from mod import Mod
 import itertools
 import pandas as pd
+import xarray as xr
 import klib
 import pickle
+import datetime
 # Plotting libraries:
 import matplotlib
 import matplotlib.pyplot as plt; plt.close('all')
@@ -75,17 +77,17 @@ load_df_temp = True
 load_df_anom = True
 load_df_norm = True
 load_df_normals = True
-plot_stripes = True
+plot_spiral = False
+plot_stripes = False
 plot_klib = False
-plot_gap_analysis = False
+plot_gap_analysis = True
 plot_temporal_coverage = False
 plot_spatial_coverage = False
 plot_seasonal_anomalies = False
 plot_station_timeseres = False
 plot_station_climatology = False
 plot_station_locations = False
-plot_delta_cc = False
-delta_cc_20C = True    
+plot_delta_cc = False; delta_cc_20C = True    
 
 #------------------------------------------------------------------------------
 # METHODS
@@ -99,6 +101,7 @@ def load_dataframe(filename_txt):
 
     # load .txt file (comma separated) into pandas dataframe
 
+#    filename_txt = 'stat4.GloSATprelim02.1658-2020.txt'
 #    filename_txt = 'stat4.CRUTEM5.1prelim01.1721-2019.txt'    
 #    filename_txt = 'GloSATprelim01.1721-2019.txt'
     
@@ -272,6 +275,16 @@ def plot_stations(lon,lat,mapfigstr,maptitlestr):
     plt.savefig(mapfigstr)
     plt.close('all')
 
+def round_time(time, round_to):
+    """roundTo is the number of minutes to round to
+    dt['dtcolumn'] = df['dtcolumn'].apply(lambda x: round_time(x))
+    """
+    rounded = time + datetime.timedelta(minutes=round_to/2.)
+    rounded -= datetime.timedelta(minutes=rounded.minute % round_to,
+                                  seconds=rounded.second,
+                                  microseconds=rounded.microsecond)
+    return rounded
+
 #------------------------------------------------------------------------------
 # LOAD DATAFRAME
 #------------------------------------------------------------------------------
@@ -300,9 +313,9 @@ else:
     # I/O: GloSATprelim01.1721-2019.txt (text version)
     #------------------------------------------------------------------------------
 
-    print('read GloSATprelim01.1721-2019.txt ...')
+    print('read stat4.GloSATprelim02.1658-2020.txt ...')
 
-    filename_txt = 'GloSATprelim01.1721-2019.txt'
+    filename_txt = 'stat4.GloSATprelim02.1658-2020.txt'
     df = load_dataframe(filename_txt)
 
     #------------------------------------------------------------------------------
@@ -365,7 +378,8 @@ else:
 
     print('extracting normals ...')
 
-    file = 'normals5.GloSAT.prelim01_FRYuse_ocPLAUS1_iqr3.600reg0.3_19411990_MIN15_OCany_19611990_MIN15_PERDEC00_NManySDreq.txt'
+    file = 'normals5.GloSAT.prelim02_FRYuse_ocPLAUS1_iqr3.600reg0.3_19411990_MIN15_OCany_19611990_MIN15_PERDEC00_NManySDreq.txt'
+#    file = 'normals5.GloSAT.prelim01_FRYuse_ocPLAUS1_iqr3.600reg0.3_19411990_MIN15_OCany_19611990_MIN15_PERDEC00_NManySDreq.txt'
 #    file = 'sd5.GloSAT.prelim01_FRYuse_ocPLAUS1_iqr3.600reg0.3_19411990_MIN15_OCany_19611990_MIN15_PERDEC00_NManySDreq.txt'
 
 #    1 ID
@@ -503,7 +517,6 @@ else:
             df_norm.loc[da.index.tolist(), str(j)] = (da[str(j)]-da[str(j)].dropna().mean())/da[str(j)].dropna().std()
 
     print('save normalized anomalies ...')
-
 
     df_norm.to_pickle('df_norm.pkl', compression='bz2')
 
@@ -797,8 +810,11 @@ if plot_gap_analysis == True:
     # Contruct timeseries of yearly station count
 
     station_yearly_count = df.groupby('year')['stationcode'].count()
-    t_station_yearly_count = pd.date_range(start=str(df['year'].min()), periods=len(station_yearly_count), freq='A')
-    
+
+    # Solve Y1677-Y2262 Pandas bug with XR! 
+    # t_station_yearly_count = pd.date_range(start=str(df['year'].min()), periods=len(station_yearly_count), freq='A')        
+    t_station_yearly_count = xr.cftime_range(start=str(df['year'].min()), periods=len(station_yearly_count), freq='A', calendar="noleap")
+   
     # Contruct timeseries of yearly mean and s.d.
 
     global_yearly_mean = []
@@ -844,6 +860,8 @@ if plot_gap_analysis == True:
 
         return x,y
 
+    df_gaps = pd.DataFrame(columns=['x','y','stationcode'])
+
     fig = plt.figure(1,figsize=(15,10))
     plt.clf() # clear plot space
     ax1=plt.subplot(1,1,1)
@@ -852,7 +870,9 @@ if plot_gap_analysis == True:
     for i in range(len(df['stationcode'].unique())):            
             
         x,y = find_gaps(df,i)            
-        ax1.plot(x, y, color=stationcolours[i], linewidth=1)
+        ax1.plot(x, y, color=stationcolours[i], linewidth=1)    
+
+        df_gaps = df_gaps.append({'x':x, 'y':y, 'stationcode':df['stationcode'].unique()[i]}, ignore_index=False)
     
     ax1.set_title(titlestr,size=fontsize)
     ax1.set_xlabel(xstr,size=fontsize)
@@ -867,6 +887,10 @@ if plot_gap_analysis == True:
     plt.savefig(figstr)
     plt.close(fig)
                     
+    print('save gaps ...')
+
+    df_gaps.to_pickle('df_gaps.pkl', compression='bz2')
+        
 #------------------------------------------------------------------------------
 # PLOT: delta CC +/- 30 years around median date value
 #------------------------------------------------------------------------------
