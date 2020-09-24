@@ -4,8 +4,8 @@
 #------------------------------------------------------------------------------
 # PROGRAM: load-stations.py
 #------------------------------------------------------------------------------
-# Version 0.2
-# 27 July, 2020
+# Version 0.3
+# 24 September, 2020
 # Michael Taylor
 # https://patternizer.github.io
 # patternizer AT gmail DOT com
@@ -26,7 +26,7 @@ warnings.filterwarnings("ignore", category=UserWarning)
 # SETTINGS: 
 #------------------------------------------------------------------------------
 
-load_df = False
+load_df = True
 
 #------------------------------------------------------------------------------
 # METHODS
@@ -35,12 +35,12 @@ load_df = False
 def load_dataframe(filename_txt):
     
     #------------------------------------------------------------------------------
-    # I/O: stat4.CRUTEM5.1prelim01.1721-2019.txt (text dump from CDF4)
+    # I/O: stat4.GloSATprelim02.1658-2020.txt
     #------------------------------------------------------------------------------
 
     # load .txt file (comma separated) into pandas dataframe
 
-    # filename_txt = 'stat4.CRUTEM5.1prelim01.1721-2019.txt'
+    # filename_txt = 'stat4.GloSATprelim02.1658-2020.txt'
     # station header sample:    
     # [067250 464  -78 1538 BLATTEN, LOETSCHENTA SWITZERLAND   20012012  982001    9999]
     # station data sample:
@@ -48,8 +48,6 @@ def load_dataframe(filename_txt):
 
     yearlist = []
     monthlist = []
-    stationheader = []
-        
     stationcode = []
     stationlat = []
     stationlon = []
@@ -89,10 +87,8 @@ def load_dataframe(filename_txt):
                     #    (ch. 80-83) Index into the 5° x 5° gridcells (internal use) 
                     #
                     # NB: char positions differ due to empty space counts difference
-
-                    header = line # keep for now for debugging
                 
-                    code = line[0:6]                    
+                    code = line[0:6]                
                     lat = line[6:10]
                     lon = line[10:15]
                     elevation = line[17:20]
@@ -107,9 +103,7 @@ def load_dataframe(filename_txt):
                                                 
                 else:           
                     yearlist.append(int(line.strip().split()[0]))                                 
-                    monthlist.append(np.array(line.strip().split()[1:]).astype('int'))                                 
-                    stationheader.append(header) # keep for now for debugging
-
+                    monthlist.append(np.array(line.strip().split()[1:]))                                 
                     stationcode.append(code)
                     stationlat.append(lat)
                     stationlon.append(lon)
@@ -141,43 +135,43 @@ def load_dataframe(filename_txt):
     df['stationelevation'] = stationelevation
     df['stationname'] = stationname
     df['stationcountry'] = stationcountry
-    df['stationfirstyear'] = stationfirstyear
-    df['stationlastyear'] = stationlastyear
-    df['stationsource'] = stationsource
-    df['stationfirstreliable'] = stationfirstreliable
-    df['stationcruindex'] = stationcruindex # NB: there are merge issues here for some stations --> DtypeWarning
-    df['stationgridcell'] = stationgridcell # NB: there are merge issues here for some stations --> DtypeWarning
+#    df['stationfirstyear'] = stationfirstyear
+#    df['stationlastyear'] = stationlastyear
+#    df['stationsource'] = stationsource
+#    df['stationfirstreliable'] = stationfirstreliable
+#    df['stationcruindex'] = stationcruindex # NB: there are merge issues here for some stations --> DtypeWarning
+#    df['stationgridcell'] = stationgridcell # NB: there are merge issues here for some stations --> DtypeWarning
 
-    # convert numeric variables from list of str to int    
+    # trim strings
     
+    df['stationname'] = [ str(df['stationname'][i]).strip() for i in range(len(df)) ] 
+    df['stationcountry'] = [ str(df['stationcountry'][i]).strip() for i in range(len(df)) ] 
+
+    # convert numeric variables from list of str to int  - important due to fillValue   
+    
+    for j in range(1,13):
+
+        df[df.columns[j]] = df[df.columns[j]].astype('int')
+
     df['stationlat'] = df['stationlat'].astype('int')
     df['stationlon'] = df['stationlon'].astype('int')
-    df['stationelevation'] = df['stationelevation'].astype('int')
-    df['stationfirstyear'] = df['stationfirstyear'].astype('int')
-    df['stationlastyear'] = df['stationlastyear'].astype('int')    
-    df['stationsource'] = df['stationsource'].astype('int')    
-    df['stationfirstreliable'] = df['stationfirstreliable'].astype('int')
+    df['stationelevation'] = df['stationelevation'].astype('int')    
     
-    # replace fill values in int variables
+    # replace fill values in int variables:
+        
+    # -999 for stationlat
     # -9999 for stationlon
+    # -9999 for station elevation
     # (some 999's occur elsewhere - fill all bad numeric cases with NaN)
     
-    df['year'].replace(-999, np.nan, inplace=True) 
-
     for j in range(1,13):
 
         df[df.columns[j]].replace(-999, np.nan, inplace=True)
 
     df['stationlat'].replace(-999, np.nan, inplace=True) 
     df['stationlon'].replace(-9999, np.nan, inplace=True) 
-    df['stationelevation'].replace(-999, np.nan, inplace=True) 
-    df['stationfirstyear'].replace(-999, np.nan, inplace=True) 
-    df['stationlastyear'].replace(-999, np.nan, inplace=True) 
-    df['stationsource'].replace(-999, np.nan, inplace=True) 
-    df['stationfirstreliable'].replace(-999, np.nan, inplace=True) 
+    df['stationelevation'].replace(-9999, np.nan, inplace=True) 
                     
-    df.to_csv('df.csv')
-
     return df
 
 #------------------------------------------------------------------------------
@@ -190,26 +184,45 @@ if load_df == True:
 
 else:    
 
-    filename_txt = 'stat4.CRUTEM5.1prelim01.1721-2019.txt'
+    filename_txt = 'stat4.GloSATprelim02.1658-2020.txt'
     df = load_dataframe(filename_txt)
+
+#------------------------------------------------------------------------------
+# ADD TRAILING 0 TO STATION CODES (str)
+#------------------------------------------------------------------------------
+
+df['stationcode'] = [ str(df['stationcode'][i]).zfill(6) for i in range(len(df)) ]
 
 #------------------------------------------------------------------------------
 # APPLY SCALE FACTORS
 #------------------------------------------------------------------------------
 
-df = pd.read_csv('df.csv', index_col=0)
 df['stationlat'] = df['stationlat']/10.0
 df['stationlon'] = df['stationlon']/10.0
 
-for j in range(1,12+1):
+for j in range(1,13):
 
-    df[df.columns[j]] = df[df.columns[j]]/100.0
+    df[df.columns[j]] = df[df.columns[j]]/10.0
 
 #------------------------------------------------------------------------------
 # CONVERT LONGITUDES FROM +W to +E
 #------------------------------------------------------------------------------
 
 df['stationlon'] = -df['stationlon']
+
+#------------------------------------------------------------------------------
+# CONVERT DTYPES FOR EFFICIENT STORAGE
+#------------------------------------------------------------------------------
+
+df['year'] = df['year'].astype('int16')
+
+for j in range(1,13):
+
+    df[df.columns[j]] = df[df.columns[j]].astype('float32')
+    
+df['stationlat'] = df['stationlat'].astype('float32')
+df['stationlon'] = df['stationlon'].astype('float32')
+df['stationelevation'] = df['stationelevation'].astype('int16')
 
 #------------------------------------------------------------------------------
 # SAVE SCALED DATAFRAME
@@ -219,3 +232,5 @@ df.to_csv('df.csv')
 
 #------------------------------------------------------------------------------
 print('** END')
+
+
