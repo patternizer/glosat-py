@@ -3,8 +3,8 @@
 #------------------------------------------------------------------------------
 # PROGRAM: app.py
 #------------------------------------------------------------------------------
-# Version 0.7
-# 5 September, 2020
+# Version 0.8
+# 23 September, 2020
 # Michael Taylor
 # https://patternizer.github.io
 # patternizer AT gmail DOT com
@@ -18,6 +18,7 @@ import numpy as np
 import numpy.ma as ma
 from mod import Mod
 import pandas as pd
+import xarray as xr
 import pickle
 # Plotting libraries:
 import matplotlib
@@ -123,6 +124,12 @@ df_anom = pd.read_pickle('df_anom.pkl', compression='bz2')
 #df_temp = df_temp_in[df_temp_in['stationcode'].isin(df_normals[df_normals['sourcecode']>1]['stationcode'])]
 #df_anom = df_anom_in[df_anom_in['stationcode'].isin(df_normals[df_normals['sourcecode']>1]['stationcode'])]
 
+#del [[df_temp_in,df_anom_in,df_normals]]
+#gc.collect()
+#df_temp_in=pd.DataFrame()
+#df_anom_in=pd.DataFrame()
+#df_normals=pd.DataFrame()
+
 time.sleep(2) # pause 5 seconds to extract dataframe
 stationlon = df_temp['stationlon']
 stationlat = df_temp['stationlat']
@@ -131,32 +138,7 @@ gb = df_temp.groupby(['stationcode'])['stationname'].unique().reset_index()
 stationcodestr = gb['stationcode']
 stationnamestr = gb['stationname'].apply(', '.join).str.lower()
 stationstr = stationcodestr + ': ' + stationnamestr
-
-
-#del [[df_temp_in,df_anom_in,df_normals]]
-#gc.collect()
-#df_temp_in=pd.DataFrame()
-#df_anom_in=pd.DataFrame()
-#df_normals=pd.DataFrame()
-
-# UPDATE: thanks to Stephen Burt
-# ------------------------------
-#Reading University, London Road
-# stationcode = 037641
-#Jan 1904 - Dec 1967 (daily records to Dec 1907 missing)
-#51.45°N, 0.96°W, 45 m AMSL
-
-#Reading University, Whiteknights
-# stationcode = 037641
-#51.441°N, 0.938°W, 66 m AMSL
-#1 Jan 1968 to date
-
-#Oxford record (Radcliffe Observatory) 
-# stationcode = 038900
-#51.76°N, 1.26°W, altitude 63 m AMSL
-
 opts = [{'label' : stationstr[i], 'value' : i} for i in range(len(stationcode))]
-#opts = [{'label' : stationname[i][0].lower(), 'value' : i} for i in range(len(stationname))]
 
 # ========================================================================
 # Start the App
@@ -173,8 +155,8 @@ app.layout = html.Div(children=[
 
 # ------------
     html.H1(children='GloSAT-py',            
-            style={'padding' : '10px', 'width': '100%', 'display': 'inline-block'},
-#           style={'backgroundColor':'black'}
+#            style={'padding' : '10px', 'width': '100%', 'display': 'inline-block'},
+            style={'padding' : '10px', 'width': '100%', 'display': 'inline-block', 'backgroundColor':'black'},
     ),
 # ------------
             
@@ -186,33 +168,25 @@ app.layout = html.Div(children=[
                 html.Br(),
                 dcc.Dropdown(
                     id = "station",
-#                    placeholder="type id or name",
                     options = opts,           
                     value = 0,
                     style = {"color": "black", 'padding' : '10px', 'width': '100%', 'display': 'inline-block'},
                 ),                                    
             ], className="dash-bootstrap"), 
-#            width={'size':2}, 
             width={'size':6}, 
             ),         
                
             dbc.Col(
-
+#            html.Div([
+#                dcc.Graph(id="station-info"),
+#            ],
+#            style = {'padding' : '10px', 'width': '100%', 'display': 'inline-block'}),    
             html.Div([
-                dcc.Graph(id="station-info"),
-            ],
-            style = {'padding' : '10px', 'width': '100%', 'display': 'inline-block'}),    
-
- #           width={'size':4}, 
+                dcc.Graph(id="station-info", style = {'padding' : '10px', 'width': '100%', 'display': 'inline-block'}),    
+            ]), 
             width={'size':6}, 
             ),
-
-#            dbc.Col(html.Div([
-#                dcc.Graph(id="plot-worldmap", style = {'padding' : '10px', 'width': '100%', 'display': 'inline-block'}),                                 
-#            ]), 
-#            width={'size':6}, 
-#            ),            
-  
+           
         ]),
     ]),
 # ------------
@@ -262,7 +236,7 @@ app.layout = html.Div(children=[
                 html.Br(),
                 html.Label(['Status: Experimental']),
                 html.Br(),
-                html.Label(['Dataset: GloSATp01']),
+                html.Label(['Dataset: GloSATp02']),
                 html.Br(),
                 html.Label(['Dataviz: ', html.A('Github', href='https://github.com/patternizer/glosat-py'), ' (dev)']),                
             ],
@@ -296,7 +270,6 @@ def update_station_info(value):
     Display station info
     """
 
-#    code = df_temp[df_temp['stationcode']==stationcode[value]]['stationcode'].iloc[0]
     lat = df_temp[df_temp['stationcode']==stationcode[value]]['stationlat'].iloc[0]
     lon = df_temp[df_temp['stationcode']==stationcode[value]]['stationlon'].iloc[0]
     elevation = df_temp[df_temp['stationcode']==stationcode[value]]['stationelevation'].iloc[0]
@@ -346,8 +319,11 @@ def update_plot_timeseries(value):
     for i in range(len(da)):            
         monthly = da.iloc[i,1:]
         ts_monthly = ts_monthly + monthly.to_list()    
-    ts_monthly = np.array(ts_monthly)                
-    t_monthly = pd.date_range(start=str(da['year'].iloc[0]), periods=len(ts_monthly), freq='M')     
+    ts_monthly = np.array(ts_monthly)   
+
+    # Solve Y1677-Y2262 Pandas bug with Xarray:        
+    # t_monthly = pd.date_range(start=str(da['year'].iloc[0]), periods=len(ts_monthly), freq='M')                  
+    t_monthly = xr.cftime_range(start=str(da['year'].iloc[0]), periods=len(ts_monthly), freq='M', calendar='noleap')     
 
     ts_yearly = []    
     ts_yearly_sd = []    
@@ -360,8 +336,11 @@ def update_plot_timeseries(value):
             yearly_sd = np.nanstd(da.iloc[i,1:])
         ts_yearly.append(yearly)    
         ts_yearly_sd.append(yearly_sd)    
-    ts_yearly_sd = np.array(ts_yearly_sd)                    
-    t_yearly = pd.date_range(start=str(da['year'].iloc[0]), periods=len(ts_yearly), freq='A')   
+    ts_yearly_sd = np.array(ts_yearly_sd) 
+                   
+    # Solve Y1677-Y2262 Pandas bug with Xarray:       
+    # t_yearly = pd.date_range(start=str(da['year'].iloc[0]), periods=len(ts_yearly), freq='A')   
+    t_yearly = xr.cftime_range(start=str(da['year'].iloc[0]), periods=len(ts_yearly), freq='A', calendar='noleap')   
 
     n = len(t_yearly)
     colors = cmocean.cm.balance(np.linspace(0.05,0.95,n)) 
@@ -417,14 +396,17 @@ def update_plot_stripes(value):
     da = df_temp[df_temp['stationcode']==df_temp['stationcode'].unique()[value]].iloc[:,range(0,13)]
     ts_yearly = []    
     for i in range(len(da)):            
-        if da.iloc[i,1:].isnull().any():
 #        if da.iloc[i,1:].isnull().all():
+        if da.iloc[i,1:].isnull().any():
             yearly = np.nan
         else:
             yearly = np.nanmean(da.iloc[i,1:])
         ts_yearly.append(yearly)  
-    ts_yearly = np.array(ts_yearly)        
-    t_yearly = pd.date_range(start=str(da['year'].iloc[0]), periods=len(ts_yearly), freq='A')   
+    ts_yearly = np.array(ts_yearly)      
+
+    # Solve Y1677-Y2262 Pandas bug with Xarray:        
+    # t_yearly = pd.date_range(start=str(da['year'].iloc[0]), periods=len(ts_yearly), freq='A')   
+    t_yearly = xr.cftime_range(start=str(da['year'].iloc[0]), periods=len(ts_yearly), freq='A', calendar='noleap')     
 
     # Calculate 1961-1990 monthly mean and full timeseries yearly s.d.
     # color range +/- 2.6 standard deviations
@@ -479,7 +461,7 @@ def update_plot_stripes(value):
         
     data=[
         go.Bar(y=ts_ones, x=t_yearly, 
-            marker = dict(color = ts_yearly_normed, colorscale='RdBu_r'),                              
+            marker = dict(color = ts_yearly_normed, colorscale='RdBu_r', line_width=0),  
             name = 'NaN',
             hoverinfo='none',
         ),            
@@ -526,10 +508,6 @@ def update_plot_climatology(value):
     """
     Plot station climatology
     """
-
-#    da = df_temp[df_temp['stationcode']==df_temp['stationcode'].unique()[value]].iloc[:,range(0,13)].dropna()
-#    X = da.iloc[:,0]
-#    Y = da.iloc[:,range(1,13)].T
 
     X = df_temp[df_temp['stationcode']==stationcode[value]].iloc[:,0]
     Y = df_temp[df_temp['stationcode']==stationcode[value]].iloc[:,range(1,13)].T
@@ -591,7 +569,11 @@ def update_plot_spiral(value):
             yearly = np.nanmean(da.iloc[i,1:])
         ts_yearly.append(yearly)   
     ts_yearly = ts_yearly - baseline
-    t_yearly = pd.date_range(start=str(da['year'].iloc[0]), periods=len(ts_yearly), freq='A')   
+
+    # Solve Y1677-Y2262 Pandas bug with Xarray:       
+    # t_yearly = pd.date_range(start=str(da['year'].iloc[0]), periods=len(ts_yearly), freq='A')   
+    t_yearly = xr.cftime_range(start=str(da['year'].iloc[0]), periods=len(ts_yearly), freq='A', calendar='noleap')     
+
     mask = np.isfinite(ts_yearly)
     ts_yearly_min = np.nanmin(np.array(ts_yearly)[mask])
     ts_yearly = ts_yearly - ts_yearly_min

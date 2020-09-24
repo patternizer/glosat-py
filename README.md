@@ -1,19 +1,19 @@
 # glosat-py
 
-Experimental python dataviz tools for reading, plotting and inspecting station data for [GloSAT](https://www.glosat.org):
+Experimental python dataviz tools for reading, plotting and inspecting GloSATp02 station data for [GloSAT](https://www.glosat.org):
 
-* python reader for GloSATp01 station database (.txt version)
-* plot GloSATp01 station level monthly timeseries
-* plot GloSATp01 station level monthly climatology
-* plot GloSATp01 station locations on world map
+* python reader for GloSATp02 station database
+* plot GloSATp02 station level monthly timeseries
+* plot GloSATp02 station level monthly climatology
+* plot GloSATp02 station locations on world map
 * plot mean annual anomaly climate stripes (1900-2019) from 1961-1990 baseline
 * plot global mean annual anomaly maps
 
-[Plotly Python Reactive Dash app](https://patternizer-crutem5.herokuapp.com) for inspecting station timeseries, monthly climatology and location. 
+[Plotly Python Reactive Dash app](https://patternizer-crutem5.herokuapp.com) for inspecting GloSATp02 station timeseries, monthly climatology and location. 
 
 ## Contents
 
-* `load-stations.py` - python reader for GloSATp01 database
+* `load-stations.py` - python reader for GloSATp02 database
 * `plot-prelim-stripes.py` - script to plot global, NH and SH timeseries and climate stripes
 * `plot-prelim-maps.py` - script to plot global maps of mean annual temperature anomaly per year 
 * `plot-prelim-stations.py` - script to calculate baselines, anomalies and plot station level timeseries
