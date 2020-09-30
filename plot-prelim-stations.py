@@ -4,8 +4,8 @@
 #------------------------------------------------------------------------------
 # PROGRAM: plot-prelim-stations.py
 #------------------------------------------------------------------------------
-# Version 0.14
-# 22 September, 2020
+# Version 0.15
+# 28 September, 2020
 # Michael Taylor
 # https://patternizer.github.io
 # patternizer AT gmail DOT com
@@ -23,7 +23,9 @@ import pandas as pd
 import xarray as xr
 import klib
 import pickle
-import datetime
+from datetime import datetime
+import nc_time_axis
+import cftime
 # Plotting libraries:
 import matplotlib
 import matplotlib.pyplot as plt; plt.close('all')
@@ -61,6 +63,8 @@ import time
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning)
 warnings.filterwarnings("ignore", category=RuntimeWarning)
+warnings.filterwarnings("ignore", message="numpy.dtype size changed")
+warnings.filterwarnings("ignore", message="numpy.ufunc size changed")
 #------------------------------------------------------------------------------
 
 #------------------------------------------------------------------------------
@@ -68,7 +72,6 @@ warnings.filterwarnings("ignore", category=RuntimeWarning)
 #------------------------------------------------------------------------------
 
 fontsize = 20
-fillval = -999
 lat_start = -90;  lat_end = 90
 lon_start = -180; lon_end = 180
 station_start=0;  station_end=10
@@ -77,10 +80,11 @@ load_df_temp = True
 load_df_anom = True
 load_df_norm = True
 load_df_normals = True
+plot_fry = False
 plot_spiral = False
 plot_stripes = False
 plot_klib = False
-plot_gap_analysis = True
+plot_temporal_change = False
 plot_temporal_coverage = False
 plot_spatial_coverage = False
 plot_seasonal_anomalies = False
@@ -88,6 +92,7 @@ plot_station_timeseres = False
 plot_station_climatology = False
 plot_station_locations = False
 plot_delta_cc = False; delta_cc_20C = True    
+plot_gap_analysis = True; station_count = True
 
 #------------------------------------------------------------------------------
 # METHODS
@@ -155,8 +160,7 @@ def load_dataframe(filename_txt):
                     cruindex = line[72:77]
                     gridcell = line[77:80]                                                    
                 else:           
-                    yearlist.append(int(line.strip().split()[0]))                                 
-#                    monthlist.append(np.array(line.strip().split()[1:]).astype('int'))                                 
+                    yearlist.append(int(line.strip().split()[0]))                               
                     monthlist.append(np.array(line.strip().split()[1:]))                                 
                     stationcode.append(code)
                     stationlat.append(lat)
@@ -178,51 +182,37 @@ def load_dataframe(filename_txt):
     
     df = pd.DataFrame(columns=['year','1','2','3','4','5','6','7','8','9','10','11','12'])
     df['year'] = yearlist
+
     for j in range(1,13):
         df[df.columns[j]] = [ monthlist[i][j-1] for i in range(len(monthlist)) ]
+
     df['stationcode'] = stationcode
     df['stationlat'] = stationlat
     df['stationlon'] = stationlon
     df['stationelevation'] = stationelevation
     df['stationname'] = stationname
     df['stationcountry'] = stationcountry
-#    df['stationfirstyear'] = stationfirstyear
-#    df['stationlastyear'] = stationlastyear
-#    df['stationsource'] = stationsource
-#    df['stationfirstreliable'] = stationfirstreliable
+    df['stationfirstyear'] = stationfirstyear
+    df['stationlastyear'] = stationlastyear
+    df['stationsource'] = stationsource
+    df['stationfirstreliable'] = stationfirstreliable
 #    df['stationcruindex'] = stationcruindex
 #    df['stationgridcell'] = stationgridcell
 
     # trim strings
     
-#    df['stationcode'] = [ str(df['stationcode'][i]).strip() for i in range(len(df)) ] 
-#    df['stationlat'] = [ str(df['stationlat'][i]).strip() for i in range(len(df)) ] 
-#    df['stationlon'] = [ str(df['stationlon'][i]).strip() for i in range(len(df)) ] 
-#    df['stationelevation'] = [ str(df['stationelevation'][i]).strip() for i in range(len(df)) ] 
     df['stationname'] = [ str(df['stationname'][i]).strip() for i in range(len(df)) ] 
     df['stationcountry'] = [ str(df['stationcountry'][i]).strip() for i in range(len(df)) ] 
-#    df['stationfirstyear'] = [ str(df['stationfirstyear'][i]).strip() for i in range(len(df)) ] 
-#    df['stationlastyear'] = [ str(df['stationlastyear'][i]).strip() for i in range(len(df)) ] 
-#    df['stationsource'] = [ str(df['stationsource'][i]).strip() for i in range(len(df)) ] 
-#    df['stationfirstreliable'] = [ str(df['stationfirstreliable'][i]).strip() for i in range(len(df)) ] 
-#    df['stationcruindex'] = [ str(df['stationcruindex'][i]).strip() for i in range(len(df)) ] 
-#    df['stationgridcell'] = [ str(df['stationgridcell'][i]).strip() for i in range(len(df)) ] 
 
-    # convert numeric types to int - important due to fillValue
+    # convert numeric types to int (important due to fillValue)
 
-#    df['year'] = df['year'].astype('int')
     for j in range(1,13):
         df[df.columns[j]] = df[df.columns[j]].astype('int')
-#    df['stationcode'] = df['stationcode'].astype('int')
+
     df['stationlat'] = df['stationlat'].astype('int')
     df['stationlon'] = df['stationlon'].astype('int')
     df['stationelevation'] = df['stationelevation'].astype('int')
-#    df['stationfirstyear'] = df['stationfirstyear'].astype('int')
-#    df['stationlastyear'] = df['stationlastyear'].astype('int')    
-#    df['stationsource'] = df['stationsource'].astype('int')    
-#    df['stationfirstreliable'] = df['stationfirstreliable'].astype('int')
-#    df['stationcruindex'] = df['stationcruindex'].astype('int')
-#    df['stationgridcell'] = df['stationgridcell'].astype('int') 
+    df['stationfirstreliable'] = df['stationfirstreliable'].astype('int')
 
     # error handling
 
@@ -232,19 +222,20 @@ def load_dataframe(filename_txt):
 #        else:
 #            continue
  
-    # replace fillvalues
+    # replace fill values in int variables
 
-#    df['year'].replace(-999, np.nan, inplace=True) 
+    # -999 for stationlat
+    # -9999 for stationlon
+    # -9999 for station elevation
+    # (some 999's occur elsewhere - fill all bad numeric cases with NaN)
+
     for j in range(1,13):    
         df[df.columns[j]].replace(-999, np.nan, inplace=True)
-#    df['stationcode'].replace(-999, np.nan, inplace=True) 
+
     df['stationlat'].replace(-999, np.nan, inplace=True) 
     df['stationlon'].replace(-9999, np.nan, inplace=True) 
     df['stationelevation'].replace(-9999, np.nan, inplace=True) 
-#    df['stationfirstyear'].replace(-999, np.nan, inplace=True) 
-#    df['stationlastyear'].replace(-999, np.nan, inplace=True) 
-#    df['stationsource'].replace(-999, np.nan, inplace=True) 
-#    df['stationfirstreliable'].replace(-999, np.nan, inplace=True)      
+#   df['stationfirstreliable'].replace(8888, np.nan, inplace=True)      
     
     return df
 
@@ -275,16 +266,6 @@ def plot_stations(lon,lat,mapfigstr,maptitlestr):
     plt.savefig(mapfigstr)
     plt.close('all')
 
-def round_time(time, round_to):
-    """roundTo is the number of minutes to round to
-    dt['dtcolumn'] = df['dtcolumn'].apply(lambda x: round_time(x))
-    """
-    rounded = time + datetime.timedelta(minutes=round_to/2.)
-    rounded -= datetime.timedelta(minutes=rounded.minute % round_to,
-                                  seconds=rounded.second,
-                                  microseconds=rounded.microsecond)
-    return rounded
-
 #------------------------------------------------------------------------------
 # LOAD DATAFRAME
 #------------------------------------------------------------------------------
@@ -309,14 +290,16 @@ if load_df_temp == True:
 
 else:    
     
-    #------------------------------------------------------------------------------
-    # I/O: GloSATprelim01.1721-2019.txt (text version)
-    #------------------------------------------------------------------------------
-
     print('read stat4.GloSATprelim02.1658-2020.txt ...')
 
     filename_txt = 'stat4.GloSATprelim02.1658-2020.txt'
     df = load_dataframe(filename_txt)
+
+    #------------------------------------------------------------------------------
+    # ADD LEADING 0 TO STATION CODES (str)
+    #------------------------------------------------------------------------------
+
+    df['stationcode'] = [ str(df['stationcode'][i]).zfill(6) for i in range(len(df)) ]
 
     #------------------------------------------------------------------------------
     # APPLY SCALE FACTORS
@@ -326,7 +309,9 @@ else:
 
     df['stationlat'] = df['stationlat']/10.0
     df['stationlon'] = df['stationlon']/10.0
+
     for j in range(1,13):
+
         df[df.columns[j]] = df[df.columns[j]]/10.0
 
     #------------------------------------------------------------------------------
@@ -342,18 +327,18 @@ else:
     #------------------------------------------------------------------------------
 
     df['year'] = df['year'].astype('int16')
+
     for j in range(1,13):
+
         df[df.columns[j]] = df[df.columns[j]].astype('float32')
-#    df['stationcode'] = df['stationcode'].astype('int32')
+
     df['stationlat'] = df['stationlat'].astype('float32')
     df['stationlon'] = df['stationlon'].astype('float32')
     df['stationelevation'] = df['stationelevation'].astype('int16')
-#    df['stationfirstyear'] = df['stationfirstyear'].astype('int16')
-#    df['stationlastyear'] = df['stationlastyear'].astype('int16')    
-#    df['stationsource'] = df['stationsource'].astype('int8')    
-#    df['stationfirstreliable'] = df['stationfirstreliable'].astype('int16')
-#    df['stationcruindex'] = df['stationcruindex'].astype('int16')
-#    df['stationgridcell'] = df['stationgridcell'].astype('int16') 
+    df['stationfirstyear'] = df['stationfirstyear'].astype('int16')
+    df['stationlastyear'] = df['stationlastyear'].astype('int16')    
+    df['stationsource'] = df['stationsource'].astype('int8')    
+    df['stationfirstreliable'] = df['stationfirstreliable'].astype('int16')
 
     #------------------------------------------------------------------------------
     # SAVE TEMPERATURES
@@ -524,29 +509,80 @@ else:
 # Fix decimal degree errors
 #------------------------------------------------------------------------------
 
-df_temp_copy = df_temp.copy()    
-df_temp_copy['stationlon'][df_temp_copy['stationcode']=='037641'] = -0.9
-df_temp = df_temp_copy
-df_temp.to_pickle('df_temp.pkl', compression='bz2')
+#df_temp_copy = df_temp.copy()    
+#df_temp_copy['stationlon'][df_temp_copy['stationcode']=='037641'] = -0.9
+#df_temp = df_temp_copy
+#df_temp.to_pickle('df_temp.pkl', compression='bz2')
 
-df_anom_copy = df_anom.copy()    
-df_anom_copy['stationlon'][df_anom_copy['stationcode']=='037641'] = -0.9
-df_anom = df_anom_copy
-df_anom.to_pickle('df_anom.pkl', compression='bz2')
+#df_anom_copy = df_anom.copy()    
+#df_anom_copy['stationlon'][df_anom_copy['stationcode']=='037641'] = -0.9
+#df_anom = df_anom_copy
+#df_anom.to_pickle('df_anom.pkl', compression='bz2')
 
-df_norm_copy = df_norm.copy()    
-df_norm_copy['stationlon'][df_norm_copy['stationcode']=='037641'] = -0.9
-df_norm = df_norm_copy
-df_norm.to_pickle('df_norm.pkl', compression='bz2')
+#df_norm_copy = df_norm.copy()    
+#df_norm_copy['stationlon'][df_norm_copy['stationcode']=='037641'] = -0.9
+#df_norm = df_norm_copy
+#df_norm.to_pickle('df_norm.pkl', compression='bz2')
+
+#------------------------------------------------------------------------------
+# REPLACE FRY FillValue WITH FIRSTYEAR
+#------------------------------------------------------------------------------
+
+if plot_fry == True:
+
+    print('plot_fry ...')
+    
+    ds = df_temp.copy()
+
+    stationfirstyears = ds.groupby('stationcode')['stationfirstyear'].mean()
+    stationfirstreliables = ds.groupby('stationcode')['stationfirstreliable'].mean()
+    stationcodes = stationfirstyears.index
+
+    for i in range(len(ds['stationcode'].unique())):
+        if stationfirstreliables[i]>2020:
+            ds.loc[ds['stationcode']==stationcodes[i], 'stationfirstreliable'] = stationfirstyears[i]
+                     
+    # PLOT FRY DIFF
+
+    fig,ax = plt.subplots()
+    stationfirstyears.plot(lw=0.5, color='lightgrey', label='post-FRY')
+    stationfirstreliables.plot(lw=0.5, color='teal', label='pre-FRY')
+    #stationfirstreliables.plot(marker='.', markersize=0.5, color='black', label='FRY')
+    #ax.fill_between(stationcodes.astype(int), stationfirstyears, stationfirstreliables, facecolor='blue', alpha=0.5)
+    plt.legend()
+    plt.savefig('FRY1.png')
+
+    # PLOT FRY TEST
+        
+    da = ds[ds['stationcode']==stationcodes[8531]].iloc[:,range(0,13)]
+    fry = ds[ds['stationcode']==stationcodes[8531]]['stationfirstreliable'].unique().astype(int)[0]
+    fry = 1900
+
+    ts_monthly = []    
+    for i in range(len(da)):                
+        monthly = da.iloc[i,1:]
+        ts_monthly = ts_monthly + monthly.to_list()    
+    ts_monthly = np.array(ts_monthly)   
+    t_monthly = pd.date_range(start=str(da['year'].iloc[0]), periods=len(ts_monthly), freq='M')    
+
+    fig,ax = plt.subplots()
+    plt.plot(t_monthly,ts_monthly, ls='-', marker='.', color='teal', label='post-FRY')
+    p = plt.plot(t_monthly[t_monthly.year<=fry], ts_monthly[t_monthly.year<=fry], ls='-', marker='.', color='lightgrey', label='pre-FRY')
+    ymin, ymax = ax.get_ylim()    
+    plt.axvline(pd.Timestamp(str(fry)), ls='--', color='black', label='FRY')
+    plt.legend()
+    plt.savefig('FRY2.png')
 
 #------------------------------------------------------------------------------
 # Climate Spiral
 # http://www.climate-lab-book.ac.uk/spirals/
 #------------------------------------------------------------------------------
-    
+
 if plot_spiral == True:
 
     print('plot_spiral ...')
+
+    ds = df_anom.copy()
 
     value = 7939, # Death Valley
 
@@ -554,7 +590,7 @@ if plot_spiral == True:
     Plot station spiral using monthly anomalies
     """
     
-    da = df_anom[df_anom['stationcode']==df_anom['stationcode'].unique()[value]].iloc[:,range(0,13)]
+    da = ds[ds['stationcode']==ds['stationcode'].unique()[value]].iloc[:,range(0,13)]
     baseline = np.nanmean(np.array(da[(da['year']>=1850)&(da['year']<=1900)].groupby('year').mean()).ravel())    
     ts_monthly = np.array(da.iloc[:,1:13]).ravel() - baseline             
     mask = np.isfinite(ts_monthly)
@@ -575,23 +611,23 @@ if plot_spiral == True:
         r = np.array(da[da['year']==da.iloc[i][0].astype('int')].iloc[:,1:13]).ravel() - baseline - ts_monthly_min            
         theta = np.linspace(0, 2*np.pi, 12)
         ax1.grid(False)
-#        ax1.set_title("Global Temperature Change ("+str(da.iloc[0][0].astype('int'))+"-"+str(da.iloc[-1][0].astype('int'))+")", color='white', fontdict={'fontsize':fontsize})
+#       ax1.set_title("Global Temperature Change ("+str(da.iloc[0][0].astype('int'))+"-"+str(da.iloc[-1][0].astype('int'))+")", color='white', fontdict={'fontsize':fontsize})
         ax1.set_ylim(0, 15)
         ax1.patch.set_facecolor('#000100')
         ax1.text(0,0, str(da.iloc[0][0].astype('int')), color='white', size=30, ha='center')            
         ax1.plot(theta, r, c=hexcolors[i])
     ax1.text(theta[np.isfinite(r)][-1], r[np.isfinite(r)][-1], str(da.iloc[0][0].astype('int')), color='white', size=30, ha='center')            
 
-#    full_circle_thetas = np.linspace(0, 2*np.pi, 1000)  
-#    blue_line_one_radii = [1.0]*1000
-#    red_line_one_radii = [2.5]*1000
-#    red_line_two_radii = [3.0]*1000
-#    ax1.plot(full_circle_thetas, blue_line_one_radii, c='blue')
-#    ax1.plot(full_circle_thetas, red_line_one_radii, c='red')
-#    ax1.plot(full_circle_thetas, red_line_two_radii, c='red')
-#    ax1.text(np.pi/2, 1.0, "0.0 C", color="blue", ha='center', fontdict={'fontsize': 20})
-#    ax1.text(np.pi/2, 2.5, "1.5 C", color="red", ha='center', fontdict={'fontsize': 20})
-#    ax1.text(np.pi/2, 3.0, "2.0 C", color="red", ha='center', fontdict={'fontsize': 20})
+#   full_circle_thetas = np.linspace(0, 2*np.pi, 1000)  
+#   blue_line_one_radii = [1.0]*1000
+#   red_line_one_radii = [2.5]*1000
+#   red_line_two_radii = [3.0]*1000
+#   ax1.plot(full_circle_thetas, blue_line_one_radii, c='blue')
+#   ax1.plot(full_circle_thetas, red_line_one_radii, c='red')
+#   ax1.plot(full_circle_thetas, red_line_two_radii, c='red')
+#   ax1.text(np.pi/2, 1.0, "0.0 C", color="blue", ha='center', fontdict={'fontsize': 20})
+#   ax1.text(np.pi/2, 2.5, "1.5 C", color="red", ha='center', fontdict={'fontsize': 20})
+#   ax1.text(np.pi/2, 3.0, "2.0 C", color="red", ha='center', fontdict={'fontsize': 20})
     plt.savefig('climate-spiral.png')
 
 #------------------------------------------------------------------------------
@@ -603,11 +639,13 @@ if plot_stripes == True:
 
     print('plot_stripes ...')
 
+    ds = df_anom.copy()    
+
     value = 7939, # Death Valley
 
     # Calculate 1961-1990 mean (cf: Ed's Climate Stripes: 1971-2000)
 
-    da = df_temp[df_temp['stationcode']==df_anom['stationcode'].unique()[value]]
+    da = ds[ds['stationcode']==ds['stationcode'].unique()[value]]
     monthly = np.array(da.iloc[:,1:13]).ravel()
              
     yearly=(da.groupby('year').mean().iloc[:,0:12]).dropna().mean(axis=1)    
@@ -616,14 +654,14 @@ if plot_stripes == True:
 
     # Compute 1900-2000 standard deviation: color range +/- 2.6 standard deviations 
 
-#    sigma = np.nanstd(yearly[(yearly.index>=1900)&(yearly.index<=2000)])
+#   sigma = np.nanstd(yearly[(yearly.index>=1900)&(yearly.index<=2000)])
     sigma = np.nanstd(yearly)
     
     x = yearly.index
     y = yearly
     z = (y-mu)*0.0+1.0
     cmap = plt.cm.get_cmap('coolwarm')
-#    cmap = cmocean.cm.balance(np.linspace(0.05,0.95,n)) 
+#   cmap = cmocean.cm.balance(np.linspace(0.05,0.95,n)) 
     maxval = +2.6 * sigma
     minval = -2.6 * sigma
 
@@ -633,7 +671,7 @@ if plot_stripes == True:
     colors = cmap((y-mu)/maxval+0.5)
 
     fig, ax = plt.subplots(figsize=(15,10))
-#    ax.bar(x, z, color=colors, width=1.0)    
+#   ax.bar(x, z, color=colors, width=1.0)    
     ax.bar(x, y-mu, color=colors)    
     ax.axis('off')
     sm = ScalarMappable(cmap=cmap, norm=plt.Normalize(min(y-mu),max(y-mu)))
@@ -658,42 +696,44 @@ if plot_klib == True:
 
     print('plot klib temperature summaries ...')
 
+    ds = df_temp.copy()
+    
     # PLOT: missing values
 
     fig = plt.figure(1,figsize=(15,10))
-    klib.missingval_plot(df_temp)
+    klib.missingval_plot(ds)
     plt.savefig('klib-dataset-summary.png')
     plt.close(fig)
 
     # display data types and most efficient representation
     
-    df_temp_cleaned = klib.data_cleaning(df_temp)
-    print(df_temp.info(memory_usage='deep'))
-    print(df_temp_cleaned.info(memory_usage='deep'))
+    ds_cleaned = klib.data_cleaning(ds)
+    print(ds.info(memory_usage='deep'))
+    print(ds_cleaned.info(memory_usage='deep'))
 
     # PLOT: correlations (and separated (pos)itive and (neg)ative correlations
     
     fig = plt.figure(1,figsize=(15,10))
-#    klib.corr_plot(df_temp_cleaned, split='pos', annot=False)
-#    klib.corr_plot(df_temp_cleaned, split='neg', annot=False)
-#    klib.corr_plot(df_temp_cleaned, target='year')
-    klib.corr_plot(df_temp_cleaned, annot=False)
+#   klib.corr_plot(ds_cleaned, split='pos', annot=False)
+#   klib.corr_plot(ds_cleaned, split='neg', annot=False)
+#   klib.corr_plot(ds_cleaned, target='year')
+    klib.corr_plot(ds_cleaned, annot=False)
     plt.savefig('klib-correlation.png')
     plt.close(fig)
 
     # PLOT: distributions
 
-#    fig = plt.figure(1,figsize=(15,10))
-#    klib.dist_plot(df_temp_cleaned)    
-#    plt.savefig('klib-distribution.png')
-#    plt.close(fig)
+#   fig = plt.figure(1,figsize=(15,10))
+#   klib.dist_plot(ds_cleaned)    
+#   plt.savefig('klib-distribution.png')
+#   plt.close(fig)
 
     # PLOT: categoricals
 
-#    fig = plt.figure(1,figsize=(15,10))
-#    klib.cat_plot(df_temp_cleaned, top=10, bottom=10)    
-#    plt.savefig('klib-categorical.png')
-#    plt.close(fig)
+#   fig = plt.figure(1,figsize=(15,10))
+#   klib.cat_plot(ds_cleaned, top=10, bottom=10)    
+#   plt.savefig('klib-categorical.png')
+#   plt.close(fig)
 
 #------------------------------------------------------------------------------
 # PLOT: Anomaly timeseries by month
@@ -703,9 +743,7 @@ if plot_seasonal_anomalies == True:
 
     print('plot_seasonal_anomalies ...')
     
-    df = df_anom.copy()
- 
-     # df[df['stationname']=='FORT WILLIAM']['stationcode'].unique()
+    ds = df_anom.copy()
     
     # PLOT: anomaly timeseries for each month of year:
 
@@ -721,18 +759,18 @@ if plot_seasonal_anomalies == True:
         axs[row,col].set_title('Month=' + "{0:.0f}".format(i+1), fontsize=15)
        
     fig, axs = plt.subplots(4,3,figsize=(15,10))
-    plot_timeseries(df.groupby('year').mean().iloc[:,0],0,0,0)
-    plot_timeseries(df.groupby('year').mean().iloc[:,1],1,0,1)
-    plot_timeseries(df.groupby('year').mean().iloc[:,2],2,0,2)
-    plot_timeseries(df.groupby('year').mean().iloc[:,3],3,1,0)
-    plot_timeseries(df.groupby('year').mean().iloc[:,4],4,1,1)
-    plot_timeseries(df.groupby('year').mean().iloc[:,5],5,1,2)
-    plot_timeseries(df.groupby('year').mean().iloc[:,6],6,2,0)
-    plot_timeseries(df.groupby('year').mean().iloc[:,7],7,2,1)
-    plot_timeseries(df.groupby('year').mean().iloc[:,8],8,2,2)
-    plot_timeseries(df.groupby('year').mean().iloc[:,9],9,3,0)
-    plot_timeseries(df.groupby('year').mean().iloc[:,10],10,3,1)
-    plot_timeseries(df.groupby('year').mean().iloc[:,11],11,3,2)
+    plot_timeseries(ds.groupby('year').mean().iloc[:,0],0,0,0)
+    plot_timeseries(ds.groupby('year').mean().iloc[:,1],1,0,1)
+    plot_timeseries(ds.groupby('year').mean().iloc[:,2],2,0,2)
+    plot_timeseries(ds.groupby('year').mean().iloc[:,3],3,1,0)
+    plot_timeseries(ds.groupby('year').mean().iloc[:,4],4,1,1)
+    plot_timeseries(ds.groupby('year').mean().iloc[:,5],5,1,2)
+    plot_timeseries(ds.groupby('year').mean().iloc[:,6],6,2,0)
+    plot_timeseries(ds.groupby('year').mean().iloc[:,7],7,2,1)
+    plot_timeseries(ds.groupby('year').mean().iloc[:,8],8,2,2)
+    plot_timeseries(ds.groupby('year').mean().iloc[:,9],9,3,0)
+    plot_timeseries(ds.groupby('year').mean().iloc[:,10],10,3,1)
+    plot_timeseries(ds.groupby('year').mean().iloc[:,11],11,3,2)
     for ax in axs.flat:
         ax.set_xlabel("Year", fontsize=15)
         ax.set_ylabel("Anomaly, " + "$\mathrm{\degree}$C", fontsize=15)
@@ -740,21 +778,21 @@ if plot_seasonal_anomalies == True:
         ax.set_ylim([-5,5])
         ax.yaxis.grid(True, which='major')                
         ax.label_outer()
-#        ax.legend(loc='best', fontsize=8)           
+#       ax.legend(loc='best', fontsize=8)           
     fig.suptitle(titlestr, fontsize=fontsize)        
     plt.savefig(figstr)
     plt.close(fig)
     
-#------------------------------------------------------------------------------
-# PLOT: station coverage - thanks to Kate-Willett (UKMO) for spec. humidity code:
+#--------------------------------------------------------------------------------
+# PLOT: station coverage - thanks to Kate Willett (UKMO) for spec. humidity code:
 # https://github.com/Kate-Willett
-#------------------------------------------------------------------------------
+#--------------------------------------------------------------------------------
 
 if plot_gap_analysis == True:
 
     print('plot_gap_analysis ...')
     
-    df = df_anom.copy()
+    ds = df_anom.copy()
 
     # Contruct palette of colours over station ID
 
@@ -799,7 +837,7 @@ if plot_gap_analysis == True:
 	    ['Pacific Islands',900000,919999],
 	    ['Australasia',920000,949999],
 	    ['Indonesia/Philippines/Borneo',950000,999999]])
-    stationlist = df['stationcode'].unique().astype('int')
+    stationlist = ds['stationcode'].unique().astype('int')
 
     stationcolours = []
     for i in range(len(labellist)):        
@@ -807,56 +845,69 @@ if plot_gap_analysis == True:
         stationcolours.append(np.tile(colourlist[i],labelcount))
     stationcolours = list(itertools.chain.from_iterable(stationcolours))
                              
-    # Contruct timeseries of yearly station count
+    if station_count == True:
 
-    station_yearly_count = df.groupby('year')['stationcode'].count()
+        figstr = 'gap-analysis-plus-annual-station-count.png'
+        titlestr = 'Gap analysis and annual station count'    
+        xstr = 'Year'
+        y1str = 'Station ID'
+        y2str = 'Annual station count'
 
-    # Solve Y1677-Y2262 Pandas bug with XR! 
-    # t_station_yearly_count = pd.date_range(start=str(df['year'].min()), periods=len(station_yearly_count), freq='A')        
-    t_station_yearly_count = xr.cftime_range(start=str(df['year'].min()), periods=len(station_yearly_count), freq='A', calendar="noleap")
-   
-    # Contruct timeseries of yearly mean and s.d.
+        # Contruct timeseries of yearly station count
 
-    global_yearly_mean = []
-    global_yearly_std = []
-    for i in range(df['year'].min(),df['year'].max()+1):                    
-        yearly_mean = np.nanmean(np.array(df[df['year']==i].iloc[:,range(1,13)]).ravel())                                     
-        yearly_std = np.nanstd(np.array(df[df['year']==i].iloc[:,range(1,13)]).ravel())                                                 
-        global_yearly_mean.append(yearly_mean)
-        global_yearly_std.append(yearly_std)
-    t_yearly = pd.date_range(start=str(df['year'].min()), periods=len(global_yearly_mean), freq='A')
+        station_yearly_count = ds.groupby('year')['stationcode'].count()
+        # Solve Y1677-Y2262 Pandas bug with XR: 
+        # t_station_yearly_count = pd.date_range(start=str(ds['year'].min()), periods=len(station_yearly_count), freq='A')        
+        t_station_yearly_count = xr.cftime_range(start=str(ds['year'].min()), periods=len(station_yearly_count), freq='A', calendar="noleap")
+        T = t_station_yearly_count.year
+        Y = station_yearly_count
 
-    # Contruct timeseries of monthly mean and s.d.
+    else:
 
-    global_monthly_mean = []
-    global_monthly_std = []
-    for i in range(df['year'].min(),df['year'].max()+1):            
-        for j in range(1,13):
-            monthly_mean = np.nanmean(df[df['year']==i][str(j)])                                          
-            monthly_std = np.nanstd(df[df['year']==i][str(j)])                                          
-            global_monthly_mean.append(monthly_mean)
-            global_monthly_std.append(monthly_std)
-    t_monthly = pd.date_range(start=str(df['year'].min()), periods=len(global_monthly_mean), freq='M')
+        figstr = 'gap-analysis-plus-annual-mean-anomaly.png'
+        titlestr = 'Gap analysis and annual mean temperature anomaly (from 1961-1990)'    
+        xstr = 'Year'
+        y1str = 'Station ID'
+        y2str = "Annual mean temperature anomaly, " + "$\mathrm{\degree}$C"
+
+        # Contruct timeseries of yearly mean and s.d.
+
+        global_yearly_mean = []
+        for i in range(ds['year'].min(),ds['year'].max()+1):                    
+            yearly_mean = np.nanmean(np.array(ds[ds['year']==i].iloc[:,range(1,13)]).ravel())                                     
+            global_yearly_mean.append(yearly_mean)
+
+        # Solve Y1677-Y2262 Pandas bug with XR: 
+        # t_yearly = pd.date_range(start=str(ds['year'].min()), periods=len(global_yearly_mean), freq='A')
+        t_yearly = xr.cftime_range(start=str(ds['year'].min()), periods=len(global_yearly_mean), freq='A', calendar="noleap")
+
+        # Contruct timeseries of monthly mean and s.d.
+
+        # global_monthly_mean = []
+        # global_monthly_std = []
+        # for i in range(ds['year'].min(),ds['year'].max()+1):            
+        #     for j in range(1,13):
+        #         monthly_mean = np.nanmean(ds[ds['year']==i][str(j)])                                          
+        #         monthly_std = np.nanstd(ds[ds['year']==i][str(j)])                                          
+        #         global_monthly_mean.append(monthly_mean)
+        #         global_monthly_std.append(monthly_std)
+        # t_monthly = pd.date_range(start=str(ds['year'].min()), periods=len(global_monthly_mean), freq='M')
+        
+        T = t_yearly.year
+        Y = global_yearly_mean
 
     # PLOT: timeseries of monthly obs per station
-
-    figstr = 'gap-analysis-plus-annual-mean-anomaly.png'
-    titlestr = 'Gap analysis and annual mean temperature anomaly (from 1961-1990)'    
-#    figstr = 'gap-analysis-plus-annual-station-count.png'
-#    titlestr = 'Gap analysis and annual station count'    
-    xstr = 'Year'
-    y1str = 'Station ID'
-    y2str = "Annual mean temperature anomaly, " + "$\mathrm{\degree}$C"
-#    y2str = 'Annual station count'
             
-    def find_gaps(df,i):
+    def find_gaps(ds,i):
 
-        da = df[df['stationcode']==df['stationcode'].unique()[i]].iloc[:,range(0,13)]
-        ts = np.array([ da.iloc[i,1:].to_list() for i in range(len(da)) ]).ravel()            
-        t = pd.date_range(start=str(da['year'].iloc[0]), periods=len(da)*12, freq='M')
+        da = ds[ds['stationcode']==ds['stationcode'].unique()[i]].iloc[:,range(0,13)]
+        ts = np.array([ da.iloc[i,1:].to_list() for i in range(len(da)) ]).ravel()  
+        # Solve Y1677-Y2262 Pandas bug with XR: 
+        # t = pd.date_range(start=str(da['year'].iloc[0]), periods=len(da)*12, freq='M')
+        t = xr.cftime_range(start=str(da['year'].iloc[0]), periods=len(da)*12, freq='M', calendar="noleap")          
         mask = np.isfinite(ts)
         x = t[mask]
-        y = np.ones(len(ts))[mask]*int(df['stationcode'].unique()[i])
+        y = np.ones(len(ts))[mask]*int(ds['stationcode'].unique()[i])
 
         return x,y
 
@@ -867,23 +918,23 @@ if plot_gap_analysis == True:
     ax1=plt.subplot(1,1,1)
     ax1.tick_params(axis='both', which='major', labelsize=fontsize)
                 
-    for i in range(len(df['stationcode'].unique())):            
+    for i in range(len(ds['stationcode'].unique())):            
             
-        x,y = find_gaps(df,i)            
-        ax1.plot(x, y, color=stationcolours[i], linewidth=1)    
-
-        df_gaps = df_gaps.append({'x':x, 'y':y, 'stationcode':df['stationcode'].unique()[i]}, ignore_index=False)
+        x,y = find_gaps(ds,i)  
+        X = [ datetime(x[j].year,x[j].month,x[j].day) for j in range(len(x)) ]          
+#        ax1.plot(X, y, color=stationcolours[i], linewidth=1)    
+        
+        da = xr.DataArray(y, coords=[('time', x)])
+        da.plot(color=stationcolours[i], linewidth=1)        
+#        df_gaps = df_gaps.append({'x':x, 'y':y, 'stationcode':ds['stationcode'].unique()[i]}, ignore_index=False)
     
     ax1.set_title(titlestr,size=fontsize)
     ax1.set_xlabel(xstr,size=fontsize)
     ax1.set_ylabel(y1str,size=fontsize)    
     ax2=ax1.twinx()
     ax2.set_ylabel(y2str,size=fontsize)
-    ax2.tick_params(axis='both', which='major', labelsize=fontsize)
-    
-    ax2.plot(t_yearly, global_yearly_mean, 'black', linewidth=2)
-#    ax2.plot(t_station_yearly_count, station_yearly_count, 'black', linewidth=2)
-
+    ax2.tick_params(axis='both', which='major', labelsize=fontsize)    
+    ax2.plot(T, Y, 'black', linewidth=2)
     plt.savefig(figstr)
     plt.close(fig)
                     
@@ -891,6 +942,97 @@ if plot_gap_analysis == True:
 
     df_gaps.to_pickle('df_gaps.pkl', compression='bz2')
         
+if plot_temporal_change == True:
+
+    print('plot_temporal_change...')
+
+    ds = df_temp.copy()    
+    
+    #------------------------------------------------------------------------------
+    # PLOT: temporal change by region: at request of Martin Stendel
+    #------------------------------------------------------------------------------
+
+    nstations = len(ds['stationcode'].unique())
+    nbins = ds['year'].max() - ds['year'].min() + 1
+    bins = np.linspace(ds['year'].min(), ds['year'].max(), nbins) 
+    counts, edges = np.histogram(ds['year'], nbins, range=[ds['year'].min(),ds['year'].max()], density=False)    
+    Q1 = pd.Series(bins).iloc[(pd.Series(np.cumsum(counts))-np.sum(counts)*0.25).abs().argsort()[:1]].values[0]
+    Q2 = pd.Series(bins).iloc[(pd.Series(np.cumsum(counts))-np.sum(counts)*0.50).abs().argsort()[:1]].values[0]
+    Q3 = pd.Series(bins).iloc[(pd.Series(np.cumsum(counts))-np.sum(counts)*0.75).abs().argsort()[:1]].values[0]
+
+    figstr = 'temporal-change-full.png'
+    titlestr = 'GloSATp02 yearly coverage (' + str(ds['year'].min()) + '-' +  str(ds['year'].max()) + '): N(obs)=' + "{0:.0f}".format(np.sum(counts)) + ', N(stations)=' + "{0:.0f}".format(nstations) 
+             
+    fig, ax = plt.subplots(figsize=(15,10))          
+    plt.fill_between(bins, counts, step="pre", facecolor='lightgrey', alpha=1.0)
+    plt.axvline(x=Q1, color='blue', label='Q1: ' + "{0:.0f}".format(Q1))    
+    plt.axvline(x=Q2, color='red', label='Q2: ' + "{0:.0f}".format(Q2))    
+    plt.axvline(x=Q3, color='blue', label='Q3: ' + "{0:.0f}".format(Q3))    
+    plt.tick_params(labelsize=12)    
+    plt.legend(loc='upper left', fontsize=12)
+    plt.xlabel("Year", fontsize=fontsize)
+    plt.ylabel("Monthly values per year", fontsize=fontsize)
+    plt.title(titlestr, fontsize=fontsize)
+    plt.savefig(figstr)
+    plt.close(fig)
+        
+    figstr = 'temporal-change-latitude-from-1950.png'
+    titlestr = 'GloSATp02 yearly coverage (1950-2020) by latitudinal band'
+
+    step = 15
+    bands = np.arange(-90,90+step,step=step)
+    index = pd.Index(bins.astype(int), name='date')
+    data = []
+    dh = pd.DataFrame(data, index=index)   
+    
+    for i in range(len(bands)-1):        
+        bandi = ds[ (ds['stationlat']>=bands[i]) & (ds['stationlat']<=bands[i+1]) ]
+        nstationsi = len(bandi['stationcode'].unique())
+        countsi, edgesi = np.histogram(bandi['year'], nbins, range=[ds['year'].min(),bandi['year'].max()], density=False)        
+        if i == 0:
+            labeli = '('+str(bands[i])+','+str(bands[i+1])+') n(stations)='+str(nstationsi)
+        else:
+            labeli = '('+str(bands[i]+1)+','+str(bands[i+1])+') n(stations)='+str(nstationsi)
+        dh[labeli] = tuple(countsi)
+            
+    ax = dh[dh.index>=1950].plot(kind='bar', stacked=True, figsize=(15, 10))
+    ax.set_xlabel("Year", fontsize=fontsize)
+    ax.set_ylabel("Monthly values per year", fontsize=fontsize)
+    plt.tick_params(labelsize=12)    
+    plt.legend(loc='upper left', fontsize=12)
+    plt.title(titlestr, fontsize=fontsize)
+    plt.savefig(figstr)
+    plt.close(fig)
+
+    figstr = 'temporal-change-full-latitude-full2.png'
+    titlestr = 'GloSATp02 yearly coverage (' + str(ds['year'].min()) + '-' + str(ds['year'].max()) + ') by latitudinal band'
+
+    fig, ax = plt.subplots(figsize=(15,10))          
+    
+    for i in range(len(bands)-1):        
+        bandi = ds[ (ds['stationlat']>=bands[i]) & (ds['stationlat']<=bands[i+1]) ]
+        nstationsi = len(bandi['stationcode'].unique())
+        binsi = bins
+        countsi, edgesi = np.histogram(bandi['year'], nbins, range=[ds['year'].min(),bandi['year'].max()], density=False)        
+        if i == 0:
+            labeli = '('+str(bands[i])+','+str(bands[i+1])+') n(stations)='+str(nstationsi)
+        else:
+            labeli = '('+str(bands[i]+1)+','+str(bands[i+1])+') n(stations)='+str(nstationsi)
+        plt.plot(binsi, countsi, label=labeli)
+#       plt.fill_between(binsi, countsi, step="pre", alpha=0.2, label=labeli)
+
+    ax.set_xlabel("Year", fontsize=fontsize)
+    ax.set_ylabel("Monthly values per year", fontsize=fontsize)
+#    plt.xlim([1900,2020])
+#    ax.xaxis.grid(True, which='major')      
+#    ax.yaxis.grid(True, which='major')      
+    plt.tick_params(labelsize=12)    
+    plt.legend(loc='upper left', fontsize=12)
+#   plt.legend(bbox_to_anchor=(1.0, 1), loc='upper left')
+    plt.title(titlestr, fontsize=fontsize)
+    plt.savefig(figstr)
+    plt.close(fig)
+    
 #------------------------------------------------------------------------------
 # PLOT: delta CC +/- 30 years around median date value
 #------------------------------------------------------------------------------
@@ -901,7 +1043,7 @@ if plot_delta_cc == True:
     # EXTRACT TARBALL IF df_norm.csv IS COMPRESSED:
     #------------------------------------------------------------------------------
 
-    df = df_norm.copy()
+    ds = df_norm.copy()
         
     def plot_hist_array(diff, figstr, titlestr):
 
@@ -952,9 +1094,9 @@ if plot_delta_cc == True:
 
     # Year range switch:
 
-#    nbins = 1900 - df['year'].min() + 1
-#    bins = np.linspace(df['year'].min(), 1900, nbins) 
-#    counts, edges = np.histogram(df['year'], nbins, range=[df['year'].min(),1900], density=False)        
+#    nbins = 1900 - ds['year'].min() + 1
+#    bins = np.linspace(ds['year'].min(), 1900, nbins) 
+#    counts, edges = np.histogram(ds['year'], nbins, range=[ds['year'].min(),1900], density=False)        
 #    year_Q2 = pd.Series(bins).iloc[(pd.Series(np.cumsum(counts))-np.sum(counts)*0.50).abs().argsort()[:1]].values[0]
 #    year_lo = year_Q2-30
 #    year_hi = year_Q2+30
@@ -974,8 +1116,8 @@ if plot_delta_cc == True:
     # 'USA---------'
     # 'AUSTRALIA---'
         
-    delta_lo_60N90N = df[(df['year']>=year_lo) & (df['year']<=year_Q2) & (df['stationlat']>60) & (df['stationlat']<=90)].groupby(['stationcode']).mean()
-    delta_hi_60N90N = df[(df['year']>year_Q2) & (df['year']<=year_hi) & (df['stationlat']>60) & (df['stationlat']<=90)].groupby(['stationcode']).mean()
+    delta_lo_60N90N = ds[(ds['year']>=year_lo) & (ds['year']<=year_Q2) & (ds['stationlat']>60) & (ds['stationlat']<=90)].groupby(['stationcode']).mean()
+    delta_hi_60N90N = ds[(ds['year']>year_Q2) & (ds['year']<=year_hi) & (ds['stationlat']>60) & (ds['stationlat']<=90)].groupby(['stationcode']).mean()
     diff = delta_hi_60N90N - delta_lo_60N90N        
     Nstations = len((delta_lo_60N90N.append(delta_hi_60N90N)).iloc[:,1:13].index.unique())        
     Nmonths = np.isfinite(delta_lo_60N90N.append(delta_hi_60N90N)).iloc[:,1:13].sum().sum()
@@ -988,8 +1130,8 @@ if plot_delta_cc == True:
     plot_stations(lon,lat,mapfigstr,maptitlestr)
     plot_hist_array(diff, figstr, titlestr)
 
-    delta_lo_30N60N = df[(df['year']>=year_lo) & (df['year']<=year_Q2) & (df['stationlat']>30) & (df['stationlat']<=60)].groupby(['stationcode']).mean()
-    delta_hi_30N60N = df[(df['year']>year_Q2) & (df['year']<=year_hi) & (df['stationlat']>30) & (df['stationlat']<=60)].groupby(['stationcode']).mean()
+    delta_lo_30N60N = ds[(ds['year']>=year_lo) & (ds['year']<=year_Q2) & (ds['stationlat']>30) & (ds['stationlat']<=60)].groupby(['stationcode']).mean()
+    delta_hi_30N60N = ds[(ds['year']>year_Q2) & (ds['year']<=year_hi) & (ds['stationlat']>30) & (ds['stationlat']<=60)].groupby(['stationcode']).mean()
     diff = delta_hi_30N60N - delta_lo_30N60N    
     Nstations = len((delta_lo_30N60N.append(delta_hi_30N60N)).iloc[:,1:13].index.unique())        
     Nmonths = np.isfinite(delta_lo_30N60N.append(delta_hi_30N60N)).iloc[:,1:13].sum().sum()
@@ -1002,8 +1144,8 @@ if plot_delta_cc == True:
     plot_stations(lon,lat,mapfigstr,maptitlestr)
     plot_hist_array(diff, figstr, titlestr)
 
-    delta_lo_00N30N = df[(df['year']>=year_lo) & (df['year']<=year_Q2) & (df['stationlat']>0) & (df['stationlat']<=30)].groupby(['stationcode']).mean()
-    delta_hi_00N30N = df[(df['year']>year_Q2) & (df['year']<=year_hi) & (df['stationlat']>0) & (df['stationlat']<=30)].groupby(['stationcode']).mean()
+    delta_lo_00N30N = ds[(ds['year']>=year_lo) & (ds['year']<=year_Q2) & (ds['stationlat']>0) & (ds['stationlat']<=30)].groupby(['stationcode']).mean()
+    delta_hi_00N30N = ds[(ds['year']>year_Q2) & (ds['year']<=year_hi) & (ds['stationlat']>0) & (ds['stationlat']<=30)].groupby(['stationcode']).mean()
     diff = delta_hi_00N30N - delta_lo_00N30N    
     Nstations = len((delta_lo_00N30N.append(delta_hi_00N30N)).iloc[:,1:13].index.unique())        
     Nmonths = np.isfinite(delta_lo_00N30N.append(delta_hi_00N30N)).iloc[:,1:13].sum().sum()
@@ -1016,8 +1158,8 @@ if plot_delta_cc == True:
     plot_stations(lon,lat,mapfigstr,maptitlestr)
     plot_hist_array(diff, figstr, titlestr)
 
-    delta_lo_00S30S = df[(df['year']>=year_lo) & (df['year']<=year_Q2) & (df['stationlat']<=0) & (df['stationlat']>=-30)].groupby(['stationcode']).mean()
-    delta_hi_00S30S = df[(df['year']>year_Q2) & (df['year']<=year_hi) & (df['stationlat']<=0) & (df['stationlat']>=-30)].groupby(['stationcode']).mean()
+    delta_lo_00S30S = ds[(ds['year']>=year_lo) & (ds['year']<=year_Q2) & (ds['stationlat']<=0) & (ds['stationlat']>=-30)].groupby(['stationcode']).mean()
+    delta_hi_00S30S = ds[(ds['year']>year_Q2) & (ds['year']<=year_hi) & (ds['stationlat']<=0) & (ds['stationlat']>=-30)].groupby(['stationcode']).mean()
     diff = delta_hi_00S30S - delta_lo_00S30S    
     Nstations = len((delta_lo_00S30S.append(delta_hi_00S30S)).iloc[:,1:13].index.unique())        
     Nmonths = np.isfinite(delta_lo_00S30S.append(delta_hi_00S30S)).iloc[:,1:13].sum().sum()
@@ -1030,8 +1172,8 @@ if plot_delta_cc == True:
     plot_stations(lon,lat,mapfigstr,maptitlestr)
     plot_hist_array(diff, figstr, titlestr)
 
-    delta_lo_30S60S = df[(df['year']>=year_lo) & (df['year']<=year_Q2) & (df['stationlat']<-30) & (df['stationlat']>=-60)].groupby(['stationcode']).mean()
-    delta_hi_30S60S = df[(df['year']>year_Q2) & (df['year']<=year_hi) & (df['stationlat']<-30) & (df['stationlat']>=-60)].groupby(['stationcode']).mean()
+    delta_lo_30S60S = ds[(ds['year']>=year_lo) & (ds['year']<=year_Q2) & (ds['stationlat']<-30) & (ds['stationlat']>=-60)].groupby(['stationcode']).mean()
+    delta_hi_30S60S = ds[(ds['year']>year_Q2) & (ds['year']<=year_hi) & (ds['stationlat']<-30) & (ds['stationlat']>=-60)].groupby(['stationcode']).mean()
     diff = delta_hi_30S60S - delta_lo_30S60S    
     Nstations = len((delta_lo_30S60S.append(delta_hi_30S60S)).iloc[:,1:13].index.unique())        
     Nmonths = np.isfinite(delta_lo_30S60S.append(delta_hi_30S60S)).iloc[:,1:13].sum().sum()
@@ -1044,8 +1186,8 @@ if plot_delta_cc == True:
     plot_stations(lon,lat,mapfigstr,maptitlestr)
     plot_hist_array(diff, figstr, titlestr)
 
-    delta_lo_60S90S = df[(df['year']>=year_lo) & (df['year']<=year_Q2) & (df['stationlat']<-60) & (df['stationlat']>=-90)].groupby(['stationcode']).mean()
-    delta_hi_60S90S = df[(df['year']>year_Q2) & (df['year']<=year_hi) & (df['stationlat']<-60) & (df['stationlat']>=-90)].groupby(['stationcode']).mean()
+    delta_lo_60S90S = ds[(ds['year']>=year_lo) & (ds['year']<=year_Q2) & (ds['stationlat']<-60) & (ds['stationlat']>=-90)].groupby(['stationcode']).mean()
+    delta_hi_60S90S = ds[(ds['year']>year_Q2) & (ds['year']<=year_hi) & (ds['stationlat']<-60) & (ds['stationlat']>=-90)].groupby(['stationcode']).mean()
     diff = delta_hi_60S90S - delta_lo_60S90S    
     Nstations = len((delta_lo_60S90S.append(delta_hi_60S90S)).iloc[:,1:13].index.unique())        
     Nmonths = np.isfinite(delta_lo_60S90S.append(delta_hi_60S90S)).iloc[:,1:13].sum().sum()
@@ -1058,8 +1200,8 @@ if plot_delta_cc == True:
     plot_stations(lon,lat,mapfigstr,maptitlestr)
     plot_hist_array(diff, figstr, titlestr)
 
-    delta_lo_global = df[(df['year']>=year_lo) & (df['year']<=year_Q2)].groupby(['stationcode']).mean()
-    delta_hi_global = df[(df['year']>year_Q2) & (df['year']<=year_hi)].groupby(['stationcode']).mean()
+    delta_lo_global = ds[(ds['year']>=year_lo) & (ds['year']<=year_Q2)].groupby(['stationcode']).mean()
+    delta_hi_global = ds[(ds['year']>year_Q2) & (ds['year']<=year_hi)].groupby(['stationcode']).mean()
     diff = delta_hi_global - delta_lo_global    
     Nstations = len((delta_lo_global.append(delta_hi_global)).iloc[:,1:13].index.unique())        
     Nmonths = np.isfinite(delta_lo_global.append(delta_hi_global)).iloc[:,1:13].sum().sum()
@@ -1072,8 +1214,8 @@ if plot_delta_cc == True:
     plot_stations(lon,lat,mapfigstr,maptitlestr)
     plot_hist_array(diff, figstr, titlestr)
 
-    delta_lo_us = df[(df['year']>=year_lo) & (df['year']<=year_Q2) & ((df['stationcountry']=='USA') | (df['stationcountry']=='USA---------'))].groupby(['stationcode']).mean()
-    delta_hi_us = df[(df['year']>year_Q2) & (df['year']<=year_hi) & ((df['stationcountry']=='USA') | (df['stationcountry']=='USA---------'))].groupby(['stationcode']).mean()
+    delta_lo_us = ds[(ds['year']>=year_lo) & (ds['year']<=year_Q2) & ((ds['stationcountry']=='USA') | (ds['stationcountry']=='USA---------'))].groupby(['stationcode']).mean()
+    delta_hi_us = ds[(ds['year']>year_Q2) & (ds['year']<=year_hi) & ((ds['stationcountry']=='USA') | (ds['stationcountry']=='USA---------'))].groupby(['stationcode']).mean()
     diff = delta_hi_us - delta_lo_us    
     Nstations = len((delta_lo_us.append(delta_hi_us)).iloc[:,1:13].index.unique())        
     Nmonths = np.isfinite(delta_lo_us.append(delta_hi_us)).iloc[:,1:13].sum().sum()
@@ -1086,8 +1228,8 @@ if plot_delta_cc == True:
     plot_stations(lon,lat,mapfigstr,maptitlestr)
     plot_hist_array(diff, figstr, titlestr)
 
-    delta_lo_australia = df[(df['year']>=year_lo) & (df['year']<=year_Q2) & ((df['stationcountry']=='AUSTRALIA') | (df['stationcountry']=='AUSTRALIA---'))].groupby(['stationcode']).mean()
-    delta_hi_australia = df[(df['year']>year_Q2) & (df['year']<=year_hi) & ((df['stationcountry']=='AUSTRALIA') | (df['stationcountry']=='AUSTRALIA---'))].groupby(['stationcode']).mean()
+    delta_lo_australia = ds[(ds['year']>=year_lo) & (ds['year']<=year_Q2) & ((ds['stationcountry']=='AUSTRALIA') | (ds['stationcountry']=='AUSTRALIA---'))].groupby(['stationcode']).mean()
+    delta_hi_australia = ds[(ds['year']>year_Q2) & (ds['year']<=year_hi) & ((ds['stationcountry']=='AUSTRALIA') | (ds['stationcountry']=='AUSTRALIA---'))].groupby(['stationcode']).mean()
     diff = delta_hi_australia - delta_lo_australia   
     Nstations = len((delta_lo_australia.append(delta_hi_australia)).iloc[:,1:13].index.unique())        
     Nmonths = np.isfinite(delta_lo_australia.append(delta_hi_australia)).iloc[:,1:13].sum().sum()
@@ -1100,8 +1242,8 @@ if plot_delta_cc == True:
     plot_stations(lon,lat,mapfigstr,maptitlestr)
     plot_hist_array(diff, figstr, titlestr)
 
-    delta_lo_00S60S_noaus = df[(df['year']>=year_lo) & (df['year']<=year_Q2) & (df['stationlat']<=0) & (df['stationlat']>=-60) & (df['stationcountry']!='AUSTRALIA') & (df['stationcountry']!='AUSTRALIA---')].groupby(['stationcode']).mean()
-    delta_hi_00S60S_noaus = df[(df['year']>year_Q2) & (df['year']<=year_hi) & (df['stationlat']<=0) & (df['stationlat']>=-60) & (df['stationcountry']!='AUSTRALIA') & (df['stationcountry']!='AUSTRALIA---')].groupby(['stationcode']).mean()
+    delta_lo_00S60S_noaus = ds[(ds['year']>=year_lo) & (ds['year']<=year_Q2) & (ds['stationlat']<=0) & (ds['stationlat']>=-60) & (ds['stationcountry']!='AUSTRALIA') & (ds['stationcountry']!='AUSTRALIA---')].groupby(['stationcode']).mean()
+    delta_hi_00S60S_noaus = ds[(ds['year']>year_Q2) & (ds['year']<=year_hi) & (ds['stationlat']<=0) & (ds['stationlat']>=-60) & (ds['stationcountry']!='AUSTRALIA') & (ds['stationcountry']!='AUSTRALIA---')].groupby(['stationcode']).mean()
     diff = delta_hi_00S60S_noaus - delta_lo_00S60S_noaus    
     Nstations = len((delta_lo_00S60S_noaus.append(delta_hi_00S60S_noaus)).iloc[:,1:13].index.unique())        
     Nmonths = np.isfinite(delta_lo_00S60S_noaus.append(delta_hi_00S60S_noaus)).iloc[:,1:13].sum().sum()
@@ -1114,8 +1256,8 @@ if plot_delta_cc == True:
     plot_stations(lon,lat,mapfigstr,maptitlestr)
     plot_hist_array(diff, figstr, titlestr)
         
-    delta_lo_eu = df[(df['year']>=year_lo) & (df['year']<=year_Q2) & (df['stationlat']>30) & (df['stationlat']<=70) & (df['stationlon']>-10) & (df['stationlon']<=50) ].groupby(['stationcode']).mean()
-    delta_hi_eu = df[(df['year']>year_Q2) & (df['year']<=year_hi) & (df['stationlat']>30) & (df['stationlat']<=70) & (df['stationlon']>-10) & (df['stationlon']<=50) ].groupby(['stationcode']).mean()
+    delta_lo_eu = ds[(ds['year']>=year_lo) & (ds['year']<=year_Q2) & (ds['stationlat']>30) & (ds['stationlat']<=70) & (ds['stationlon']>-10) & (ds['stationlon']<=50) ].groupby(['stationcode']).mean()
+    delta_hi_eu = ds[(ds['year']>year_Q2) & (ds['year']<=year_hi) & (ds['stationlat']>30) & (ds['stationlat']<=70) & (ds['stationlon']>-10) & (ds['stationlon']<=50) ].groupby(['stationcode']).mean()
     diff = delta_hi_eu - delta_lo_eu    
     Nstations = len((delta_lo_eu.append(delta_hi_eu)).iloc[:,1:13].index.unique())        
     Nmonths = np.isfinite(delta_lo_eu.append(delta_hi_eu)).iloc[:,1:13].sum().sum()
@@ -1128,8 +1270,8 @@ if plot_delta_cc == True:
     plot_stations(lon,lat,mapfigstr,maptitlestr)
     plot_hist_array(diff, figstr, titlestr)
 
-    delta_lo_eu2 = df[(df['year']>=year_lo) & (df['year']<=year_Q2) & (df['stationlat']>30) & (df['stationlat']<=70) & (df['stationlon']>-10) & (df['stationlon']<=30) ].groupby(['stationcode']).mean()
-    delta_hi_eu2 = df[(df['year']>year_Q2) & (df['year']<=year_hi) & (df['stationlat']>30) & (df['stationlat']<=70) & (df['stationlon']>-10) & (df['stationlon']<=30) ].groupby(['stationcode']).mean()
+    delta_lo_eu2 = ds[(ds['year']>=year_lo) & (ds['year']<=year_Q2) & (ds['stationlat']>30) & (ds['stationlat']<=70) & (ds['stationlon']>-10) & (ds['stationlon']<=30) ].groupby(['stationcode']).mean()
+    delta_hi_eu2 = ds[(ds['year']>year_Q2) & (ds['year']<=year_hi) & (ds['stationlat']>30) & (ds['stationlat']<=70) & (ds['stationlon']>-10) & (ds['stationlon']<=30) ].groupby(['stationcode']).mean()
     diff = delta_hi_eu2 - delta_lo_eu2    
     Nstations = len((delta_lo_eu2.append(delta_hi_eu2)).iloc[:,1:13].index.unique())        
     Nmonths = np.isfinite(delta_lo_eu2.append(delta_hi_eu2)).iloc[:,1:13].sum().sum()
@@ -1145,35 +1287,35 @@ if plot_delta_cc == True:
 #------------------------------------------------------------------------------
 # PLOTS
 #------------------------------------------------------------------------------
-
+    
 if plot_temporal_coverage == True:
     
     print('plot_temporal_coverage...')
 
-    df = df_temp.copy()
+    ds = df_temp.copy()    
 
-#    coverage per month:    
-#    plt.plot(df.groupby('year').sum().iloc[:,0:12])
+#   coverage per month:    
+#   plt.plot(df.groupby('year').sum().iloc[:,0:12])
     
     #------------------------------------------------------------------------------
     # PLOT: temporal coverage: to 1900
     #------------------------------------------------------------------------------
              
-    nbins = 1900 - df['year'].min() + 1
-    bins = np.linspace(df['year'].min(), 1900, nbins) 
-#    counts, edges = np.histogram(df[df['year']<=1900]['year'], nbins, range=[df['year'].min(),1900+1], density=False)    
-    counts, edges = np.histogram(df['year'], nbins, range=[df['year'].min(),1900], density=False)        
+    nbins = 1900 - ds['year'].min() + 1
+    bins = np.linspace(ds['year'].min(), 1900, nbins) 
+#   counts, edges = np.histogram(ds[ds['year']<=1900]['year'], nbins, range=[ds['year'].min(),1900+1], density=False)    
+    counts, edges = np.histogram(ds['year'], nbins, range=[ds['year'].min(),1900], density=False)        
     Q1 = pd.Series(bins).iloc[(pd.Series(np.cumsum(counts))-np.sum(counts)*0.25).abs().argsort()[:1]].values[0]
     Q2 = pd.Series(bins).iloc[(pd.Series(np.cumsum(counts))-np.sum(counts)*0.50).abs().argsort()[:1]].values[0]
     Q3 = pd.Series(bins).iloc[(pd.Series(np.cumsum(counts))-np.sum(counts)*0.75).abs().argsort()[:1]].values[0]
              
     figstr = 'temporal-coverage-1900.png'
-    titlestr = 'Yearly coverage (1721-1900): N=' + "{0:.0f}".format(np.sum(counts))
+    titlestr = 'Yearly coverage (' + str(ds['year'].min()) + '-1900): N=' + "{0:.0f}".format(np.sum(counts))
 
     fig, ax = plt.subplots(figsize=(15,10))          
-#    plt.hist(df[df['year']<=1900]['year'], bins=nbins, density=False, facecolor='grey', alpha=0.5, label='KDE')
+#   plt.hist(ds[ds['year']<=1900]['year'], bins=nbins, density=False, facecolor='grey', alpha=0.5, label='KDE')
     plt.fill_between(bins, counts, step="pre", facecolor='lightgrey', alpha=1.0)    
-#    plt.plot(bins, counts, drawstyle='steps', linewidth=2, color='black')    
+#   plt.plot(bins, counts, drawstyle='steps', linewidth=2, color='black')    
     plt.axvline(x=Q1, color='blue', label='Q1: ' + "{0:.0f}".format(Q1))   
     plt.axvline(x=Q2, color='red', label='Q2: ' + "{0:.0f}".format(Q2))    
     plt.axvline(x=Q3, color='blue', label='Q3: ' + "{0:.0f}".format(Q3))    
@@ -1189,19 +1331,19 @@ if plot_temporal_coverage == True:
     # PLOT: temporal coverage: full record
     #------------------------------------------------------------------------------
 
-    nbins = df['year'].max() - df['year'].min() + 1
-    bins = np.linspace(df['year'].min(), df['year'].max(), nbins) 
-    counts, edges = np.histogram(df['year'], nbins, range=[df['year'].min(),df['year'].max()], density=False)    
+    nbins = ds['year'].max() - ds['year'].min() + 1
+    bins = np.linspace(ds['year'].min(), ds['year'].max(), nbins) 
+    counts, edges = np.histogram(ds['year'], nbins, range=[ds['year'].min(),ds['year'].max()], density=False)    
     Q1 = pd.Series(bins).iloc[(pd.Series(np.cumsum(counts))-np.sum(counts)*0.25).abs().argsort()[:1]].values[0]
     Q2 = pd.Series(bins).iloc[(pd.Series(np.cumsum(counts))-np.sum(counts)*0.50).abs().argsort()[:1]].values[0]
     Q3 = pd.Series(bins).iloc[(pd.Series(np.cumsum(counts))-np.sum(counts)*0.75).abs().argsort()[:1]].values[0]
              
     figstr = 'temporal-coverage-full.png'
-    titlestr = 'Yearly coverage (1721-2019): N=' + "{0:.0f}".format(np.sum(counts)) 
+    titlestr = 'Yearly coverage (' + str(ds['year'].min()) + '-2019): N=' + "{0:.0f}".format(np.sum(counts)) 
 
     fig, ax = plt.subplots(figsize=(15,10))          
     plt.fill_between(bins, counts, step="pre", facecolor='lightgrey', alpha=1.0)
-#    plt.plot(bins, counts, drawstyle='steps', linewidth=2, color='black')    
+#   plt.plot(bins, counts, drawstyle='steps', linewidth=2, color='black')    
     plt.axvline(x=Q1, color='blue', label='Q1: ' + "{0:.0f}".format(Q1))    
     plt.axvline(x=Q2, color='red', label='Q2: ' + "{0:.0f}".format(Q2))    
     plt.axvline(x=Q3, color='blue', label='Q3: ' + "{0:.0f}".format(Q3))    
@@ -1221,21 +1363,21 @@ if plot_spatial_coverage == True:
 
     print('plot_spatial_coverage: latitudinal ...')
 
-    df = df_temp.copy()
+    ds = df_temp.copy()
 
     nbins = lat_end - lat_start + 1
     bins = np.linspace(lat_start, lat_end, nbins) 
-    counts, edges = np.histogram(df['stationlat'], nbins, range=[lat_start,lat_end], density=False)       
+    counts, edges = np.histogram(ds['stationlat'], nbins, range=[lat_start,lat_end], density=False)       
     Q1 = pd.Series(bins).iloc[(pd.Series(np.cumsum(counts))-np.sum(counts)*0.25).abs().argsort()[:1]].values[0]
     Q2 = pd.Series(bins).iloc[(pd.Series(np.cumsum(counts))-np.sum(counts)*0.50).abs().argsort()[:1]].values[0]
     Q3 = pd.Series(bins).iloc[(pd.Series(np.cumsum(counts))-np.sum(counts)*0.75).abs().argsort()[:1]].values[0]
 
     figstr = 'latitudinal-coverage-full.png'
-    titlestr = 'Latitudinal coverage (1721-2019)'
+    titlestr = 'Latitudinal coverage (' + str(ds['year'].min()) +'-2019)'
 
     fig, ax = plt.subplots(figsize=(15,10))          
     plt.fill_between(bins, counts, step="pre", facecolor='lightgrey', alpha=1.0)
-#    plt.plot(bins, counts, drawstyle='steps', linewidth=2, color='black')    
+#   plt.plot(bins, counts, drawstyle='steps', linewidth=2, color='black')    
     plt.axvline(x=Q1, color='blue', label='Q1: ' + "{0:.0f}".format(Q1) + "$\mathrm{\degree}N$")    
     plt.axvline(x=Q2, color='red', label='Q2: ' + "{0:.0f}".format(Q2) + "$\mathrm{\degree}N$")    
     plt.axvline(x=Q3, color='blue', label='Q3: ' + "{0:.0f}".format(Q3) + "$\mathrm{\degree}N$")    
@@ -1255,23 +1397,23 @@ if plot_spatial_coverage == True:
 
     nbins = lon_end - lon_start + 1
     bins = np.linspace(lon_start, lon_end, nbins) 
-    counts, edges = np.histogram(df['stationlon'], nbins, range=[lon_start,lon_end], density=False)       
+    counts, edges = np.histogram(ds['stationlon'], nbins, range=[lon_start,lon_end], density=False)       
     Q1 = pd.Series(bins).iloc[(pd.Series(np.cumsum(counts))-np.sum(counts)*0.25).abs().argsort()[:1]].values[0]
     Q2 = pd.Series(bins).iloc[(pd.Series(np.cumsum(counts))-np.sum(counts)*0.50).abs().argsort()[:1]].values[0]
     Q3 = pd.Series(bins).iloc[(pd.Series(np.cumsum(counts))-np.sum(counts)*0.75).abs().argsort()[:1]].values[0]
 
     figstr = 'longitudinal-coverage-full.png'
-    titlestr = 'Longitudinal coverage (1721-2019)'
+    titlestr = 'Longitudinal coverage (' + str(ds['year'].min()) + '-2019)'
 
     fig, ax = plt.subplots(figsize=(15,10))          
     plt.fill_between(bins, counts, step="pre", facecolor='lightgrey', alpha=1.0)
-#    plt.plot(bins, counts, drawstyle='steps', linewidth=2, color='black')    
-    plt.axvline(x=Q1, color='blue', label='Q1: ' + "{0:.0f}".format(Q1) + "$\mathrm{\degree}W$")    
-    plt.axvline(x=Q2, color='red', label='Q2: ' + "{0:.0f}".format(Q2) + "$\mathrm{\degree}W$")    
-    plt.axvline(x=Q3, color='blue', label='Q3: ' + "{0:.0f}".format(Q3) + "$\mathrm{\degree}W$")    
+#   plt.plot(bins, counts, drawstyle='steps', linewidth=2, color='black')    
+    plt.axvline(x=Q1, color='blue', label='Q1: ' + "{0:.0f}".format(Q1) + "$\mathrm{\degree}E$")    
+    plt.axvline(x=Q2, color='red', label='Q2: ' + "{0:.0f}".format(Q2) + "$\mathrm{\degree}E$")    
+    plt.axvline(x=Q3, color='blue', label='Q3: ' + "{0:.0f}".format(Q3) + "$\mathrm{\degree}E$")    
     plt.tick_params(labelsize=fontsize)    
     plt.legend(loc='best', fontsize=fontsize)
-    plt.xlabel("Longitude, $\mathrm{\degree}W$", fontsize=fontsize)
+    plt.xlabel("Longitude, $\mathrm{\degree}E$", fontsize=fontsize)
     plt.ylabel("Monthly values per degree", fontsize=fontsize)
     plt.title(titlestr, fontsize=fontsize)
     plt.savefig(figstr)
@@ -1284,15 +1426,15 @@ if plot_station_timeseres == True:
     #------------------------------------------------------------------------------
 
     print('plot_station_timeseries ...')
-        
-    df = df_anom.copy()
+            
+    ds = df_anom.copy()
     
     #for j in range(len(np.unique(stationcode))):
     for j in range(station_start,station_end):
     
-        # form station timeseries
+        # form station anomaly timeseries
 
-        da = df[df['stationcode']==df['stationcode'].unique()[j]].iloc[:,range(0,13)]
+        da = ds[ds['stationcode']==ds['stationcode'].unique()[j]].iloc[:,range(0,13)]
     #   da_melt = da.melt(id_vars='year').sort_values(by=['year']).reset_index()
 
         ts = []    
@@ -1315,11 +1457,10 @@ if plot_station_timeseres == True:
         colors = cmocean.cm.balance(np.linspace(0.05,0.95,n)) 
         hexcolors = [ "#{:02x}{:02x}{:02x}".format(int(colors[i][0]*255),int(colors[i][1]*255),int(colors[i][2]*255)) for i in range(len(colors)) ]
     
-        figstr = 'timeseries_' + str(int(df['stationcode'].unique()[j])) + '.png'
-        titlestr = 'Annual mean temperature anomaly timeseries: stationcode=' + str(int(df['stationcode'].unique()[j]))
+        figstr = 'timeseries_' + str(int(ds['stationcode'].unique()[j])) + '.png'
+        titlestr = 'Annual mean temperature anomaly timeseries: stationcode=' + str(int(ds['stationcode'].unique()[j]))
               
         fig, ax = plt.subplots(figsize=(15,10))      
-#        plt.plot(t,ts, color='lightgrey', label='Monthly')
         plt.errorbar(t_yearly, ts_yearly, yerr=ts_yearly_sd, xerr=None, fmt='None', ecolor=hexcolors, label='± 1 s.d.')                                   
         for k in range(n):     
             if k==n-1:
@@ -1343,20 +1484,20 @@ if plot_station_climatology == True:
     #------------------------------------------------------------------------------
 
     print('plot_station_climatology ...')
-        
-    df = df_temp.copy()
+          
+    ds = df_temp.copy()
     
     #for j in range(len(np.unique(stationcode))):        
     for j in range(station_start,station_end):
     
-        X = df[df['stationcode']==df['stationcode'].unique()[j]].iloc[:,0]    
-        Y = df[df['stationcode']==df['stationcode'].unique()[j]].iloc[:,range(1,13)].T   
+        X = ds[ds['stationcode']==ds['stationcode'].unique()[j]].iloc[:,0]    
+        Y = ds[ds['stationcode']==ds['stationcode'].unique()[j]].iloc[:,range(1,13)].T   
         n = len(Y.T)            
         colors = cmocean.cm.balance(np.linspace(0.05,0.95,n)) 
         hexcolors = [ "#{:02x}{:02x}{:02x}".format(int(colors[i][0]*255),int(colors[i][1]*255),int(colors[i][2]*255)) for i in range(len(colors)) ]
         
-        figstr = 'seasonal-cycle_' + str(int(df['stationcode'].unique()[j])) + '.png'
-        titlestr = 'Monthly temperature seasonal cycle: stationcode=' + str(int(df['stationcode'].unique()[j]))
+        figstr = 'seasonal-cycle_' + str(int(ds['stationcode'].unique()[j])) + '.png'
+        titlestr = 'Monthly temperature seasonal cycle: stationcode=' + str(int(ds['stationcode'].unique()[j]))
 
         fig, ax = plt.subplots(figsize=(15,10))      
         for k in range(n):     
@@ -1447,21 +1588,23 @@ if plot_station_locations == True:
 
     print('plot_station_locations ...')
 
-    lon = df['stationlon']
-    lat = df['stationlat']
+    ds = df_temp.copy()
+
+    lon = ds['stationlon']
+    lat = ds['stationlat']
     
     figstr = 'location_map.png'
-    titlestr = 'Station locations'
+    titlestr = 'GloSATp02: monthly obs=' + str(len(ds)) + ', stations=' + str(len(ds['stationcode'].unique()))
      
     fig  = plt.figure(figsize=(15,10))
     p = ccrs.PlateCarree(central_longitude=0); threshold = 0
     ax = plt.axes(projection=p)
     ax.set_global()
-#    ax.stock_img()
-    ax.add_feature(cf.COASTLINE, edgecolor="lightblue")
-    ax.add_feature(cf.BORDERS, edgecolor="lightblue")
-#    ax.coastlines()
-#    ax.gridlines()    
+#   ax.stock_img()
+#   ax.add_feature(cf.COASTLINE, edgecolor="lightblue")
+#   ax.add_feature(cf.BORDERS, edgecolor="lightblue")
+    ax.coastlines(color='lightblue')
+#   ax.gridlines()    
         
     ax.set_extent([-180, 180, -90, 90], crs=p)    
     gl = ax.gridlines(crs=p, draw_labels=True, linewidth=1, color='black', alpha=0.5, linestyle='-')

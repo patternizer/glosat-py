@@ -3,8 +3,8 @@
 #------------------------------------------------------------------------------
 # PROGRAM: app.py
 #------------------------------------------------------------------------------
-# Version 0.8
-# 23 September, 2020
+# Version 0.10
+# 30 September, 2020
 # Michael Taylor
 # https://patternizer.github.io
 # patternizer AT gmail DOT com
@@ -81,7 +81,7 @@ def __new_del(self):
 #    libc.malloc_trim(0)
 
 if libc:
-    print('Applying memory leak patch for pd.DataFrame.__del__', file=sys.stderr)
+#   print('Applying memory leak patch for pd.DataFrame.__del__', file=sys.stderr)
     pd.DataFrame.__del__ = __new_del
 else:
     print('Skipping memory leak patch for pd.DataFrame.__del__: libc not found', file=sys.stderr)
@@ -174,14 +174,41 @@ app.layout = html.Div(children=[
                     style = {"color": "black", 'padding' : '10px', 'width': '100%', 'display': 'inline-block'},
                 ),                                    
             ], className="dash-bootstrap"), 
-            width={'size':6}, 
+            width={'size':3}, 
             ),         
+
+            dbc.Col(html.Div([
+                html.Br(),
+                html.Br(),
+                dcc.RadioItems(
+                    id = "radio-fry",
+                    options=[
+                        {'label': ' FRY', 'value': 'On'},
+                        {'label': ' Raw', 'value': 'Off'},
+                    ],
+                    value = 'On',
+                    labelStyle={'padding' : '5px', 'display': 'inline-block'},
+                ),
+                               
+
+#            dbc.Row(
+#                html.Label('Stats:'),
+#                dcc.RadioItems(
+#                    id = "radio-stats",
+#                    options=[
+#                        {'label': ' On', 'value': 'On'},
+#                        {'label': ' Off', 'value': 'Off'},
+#                    ],
+#                    value = 'On',
+#                    labelStyle={'padding' : '5px', 'display': 'inline-block'},
+#               ),                               
+#           ),
+
+            ]), 
+            width={'size':3}, 
+            ),
                
             dbc.Col(
-#            html.Div([
-#                dcc.Graph(id="station-info"),
-#            ],
-#            style = {'padding' : '10px', 'width': '100%', 'display': 'inline-block'}),    
             html.Div([
                 dcc.Graph(id="station-info", style = {'padding' : '10px', 'width': '100%', 'display': 'inline-block'}),    
             ]), 
@@ -305,16 +332,21 @@ def update_station_info(value):
 
 @app.callback(
     Output(component_id='plot-timeseries', component_property='figure'),
-    [Input(component_id='station', component_property='value')],    
+    [Input(component_id='station', component_property='value'),    
+    Input(component_id='radio-fry', component_property='value')],    
     )
     
-def update_plot_timeseries(value):
+def update_plot_timeseries(value,trim):
     
     """
     Plot station timeseries
     """
 
-    da = df_anom[df_anom['stationcode']==stationcode[value]].iloc[:,range(0,13)]
+    if trim == 'On':
+        fry = df_anom[df_anom['stationcode']==stationcode[value]]['stationfirstreliable'].unique()
+        da = df_anom[ (df_anom['year']>=fry[0]) & (df_anom['stationcode']==stationcode[value]) ].iloc[:,range(0,13)]
+    elif trim == 'Off':   
+        da = df_anom[df_anom['stationcode']==stationcode[value]].iloc[:,range(0,13)]
 
     ts_monthly = []    
     for i in range(len(da)):            
@@ -346,29 +378,29 @@ def update_plot_timeseries(value):
     n = len(t_yearly)
     colors = cmocean.cm.balance(np.linspace(0.05,0.95,n)) 
     hexcolors = [ "#{:02x}{:02x}{:02x}".format(int(colors[i][0]*255),int(colors[i][1]*255),int(colors[i][2]*255)) for i in range(len(colors)) ]
-                                  
+
     data=[
-        go.Scatter(x=t_monthly, y=ts_monthly, 
-            mode='lines+markers', 
-            legendgroup="a",
-            line=dict(width=1.0, color='lightgrey'),
-            marker=dict(size=5, opacity=0.5, color='grey'),
-            name='Monthly',
-            yaxis='y1',
-            error_y=dict(
-                type='constant',
-                array=ts_yearly_sd,
-                visible=False),
-        ),
-        go.Scatter(x=t_yearly, y=ts_yearly, 
-            mode='markers', 
-            legendgroup="a",
-            marker=dict(size=10, opacity=1.0, color=hexcolors),
-            name='Yearly',
-            yaxis='y1',
-        )
+            go.Scatter(x=t_monthly, y=ts_monthly, 
+                mode='lines+markers', 
+                legendgroup="a",
+                line=dict(width=1.0, color='lightgrey'),
+                marker=dict(size=5, opacity=0.5, color='grey'),
+                name='Monthly',
+                yaxis='y1',
+                error_y=dict(
+                    type='constant',
+                    array=ts_yearly_sd,
+                    visible=False),
+            ),
+            go.Scatter(x=t_yearly, y=ts_yearly, 
+                mode='markers', 
+                legendgroup="a",
+                marker=dict(size=10, opacity=1.0, color=hexcolors),
+                name='Yearly',
+                yaxis='y1',
+            )
     ]   
-    
+                                      
     fig = go.Figure(data)
     fig.update_layout(
         template = "plotly_dark",
@@ -384,17 +416,23 @@ def update_plot_timeseries(value):
 
 @app.callback(
     Output(component_id='plot-stripes', component_property='figure'),
-    [Input(component_id='station', component_property='value')],    
+    [Input(component_id='station', component_property='value'),
+    Input(component_id='radio-fry', component_property='value')],         
     )
 
-def update_plot_stripes(value):
+def update_plot_stripes(value,trim):
     
     """
     Plot station stripes
     https://showyourstripes.info/
     """
 
-    da = df_temp[df_temp['stationcode']==df_temp['stationcode'].unique()[value]].iloc[:,range(0,13)]
+    if trim == 'On':
+        fry = df_temp[df_temp['stationcode']==stationcode[value]]['stationfirstreliable'].unique()
+        da = df_temp[ (df_temp['year']>=fry[0]) & (df_temp['stationcode']==stationcode[value]) ].iloc[:,range(0,13)]
+    elif trim == 'Off':   
+        da = df_temp[df_temp['stationcode']==df_temp['stationcode'].unique()[value]].iloc[:,range(0,13)]
+
     ts_yearly = []    
     for i in range(len(da)):            
 #        if da.iloc[i,1:].isnull().all():
@@ -501,24 +539,34 @@ def update_plot_stripes(value):
 
 @app.callback(
     Output(component_id='plot-climatology', component_property='figure'),
-    [Input(component_id='station', component_property='value')],    
+    [Input(component_id='station', component_property='value'),
+    Input(component_id='radio-fry', component_property='value')],              
     )
 
-def update_plot_climatology(value):
+def update_plot_climatology(value,trim):
     
     """
     Plot station climatology
     """
 
-    X = df_temp[df_temp['stationcode']==stationcode[value]].iloc[:,0]
-    Y = df_temp[df_temp['stationcode']==stationcode[value]].iloc[:,range(1,13)].T
+    if trim == 'On':
+        fry = df_temp[df_temp['stationcode']==stationcode[value]]['stationfirstreliable'].unique()
+        da = df_temp[ (df_temp['year']>=fry[0]) & (df_temp['stationcode']==stationcode[value]) ].iloc[:,range(0,13)]
+    elif trim == 'Off':   
+        da = df_temp[df_temp['stationcode']==df_temp['stationcode'].unique()[value]].iloc[:,range(0,13)]
+
+    X = da.iloc[:,0]
+    Y = da.iloc[:,range(1,13)].T
+#   X = df_temp[df_temp['stationcode']==stationcode[value]].iloc[:,0]
+#   Y = df_temp[df_temp['stationcode']==stationcode[value]].iloc[:,range(1,13)].T
+
     n = len(Y.T)            
     colors = cmocean.cm.balance(np.linspace(0.05,0.95,n)) 
     hexcolors = [ "#{:02x}{:02x}{:02x}".format(int(colors[i][0]*255),int(colors[i][1]*255),int(colors[i][2]*255)) for i in range(len(colors)) ]
 
     data = []
     for k in range(len(Y.T)):
-#        if Y.iloc[:,k].isnull().any():
+#       if Y.iloc[:,k].isnull().any():
         if Y.iloc[:,k].isnull().all():
             yearly = np.nan
         else:
@@ -544,18 +592,24 @@ def update_plot_climatology(value):
 
 @app.callback(
     Output(component_id='plot-spiral', component_property='figure'),
-    [Input(component_id='station', component_property='value')],    
+    [Input(component_id='station', component_property='value'),    
+    Input(component_id='radio-fry', component_property='value')],              
     )
 
-def update_plot_spiral(value):
+def update_plot_spiral(value,trim):
     
     """
     Plot station climate spiral of monthly or yearly mean anomaly from min:
     # http://www.climate-lab-book.ac.uk/spirals/    
     """
     
-    da = df_anom[df_anom['stationcode']==df_anom['stationcode'].unique()[value]].iloc[:,range(0,13)]
-#    baseline = np.nanmean(np.array(da[(da['year']>=1850)&(da['year']<=1900)].groupby('year').mean()).ravel())    
+    if trim == 'On':
+        fry = df_anom[df_anom['stationcode']==stationcode[value]]['stationfirstreliable'].unique()
+        da = df_anom[ (df_anom['year']>=fry[0]) & (df_anom['stationcode']==stationcode[value]) ].iloc[:,range(0,13)]
+    elif trim == 'Off':   
+        da = df_anom[df_anom['stationcode']==df_anom['stationcode'].unique()[value]].iloc[:,range(0,13)]
+
+#   baseline = np.nanmean(np.array(da[(da['year']>=1850)&(da['year']<=1900)].groupby('year').mean()).ravel())    
     baseline = np.nanmean(np.array(da.groupby('year').mean()).ravel())    
     ts_monthly = np.array(da.iloc[:,1:13]).ravel() - baseline             
     mask = np.isfinite(ts_monthly)
@@ -624,7 +678,8 @@ def update_plot_spiral(value):
     
 @app.callback(
     Output(component_id='plot-worldmap', component_property='figure'),
-    [Input(component_id='station', component_property='value')])
+    [Input(component_id='station', component_property='value')],                   
+    )
 
 def update_plot_worldmap(value):
     
@@ -632,29 +687,32 @@ def update_plot_worldmap(value):
     Plot station location on world map
     """
 
-    Y = df_temp[df_temp['stationcode']==stationcode[value]].iloc[:,range(1,13)].T
-    n = len(Y.T)            
+    da = df_temp[ df_temp['stationcode']==stationcode[value] ]
+    n = len(da)            
     
     colors = cmocean.cm.balance(np.linspace(0.05,0.95,n)) 
     hexcolors = [ "#{:02x}{:02x}{:02x}".format(int(colors[i][0]*255),int(colors[i][1]*255),int(colors[i][2]*255)) for i in range(len(colors)) ]
     cmap = hexcolors
 
+#    lat = [da['stationlat'][0]]
+#    lon = [da['stationlon'][0]]
+#    station = da['stationcode'][0]
+
     lat = [df_temp[df_temp['stationcode']==stationcode[value]]['stationlat'].iloc[0]]
     lon = [df_temp[df_temp['stationcode']==stationcode[value]]['stationlon'].iloc[0]]
-    var = []
     station = df_temp[df_temp['stationcode']==stationcode[value]]['stationcode'].iloc[0]
-    data = df_temp[df_temp['stationcode']==stationcode[value]].iloc[0]
+#    var = []
+#    data = df_temp[df_temp['stationcode']==stationcode[value]].iloc[0]
     
-#    fig = go.Figure(go.Densitymapbox(lat=lat, lon=lon, z=var, radius=10))
     fig = go.Figure(px.scatter_mapbox(lat=lat, lon=lon, color_discrete_sequence=["darkred"], zoom=1))
     fig.update_layout(
         template = "plotly_dark",
-#        template = None,
+#       template = None,
     )
     fig.update_layout(mapbox_style="carto-positron", mapbox_center_lat=lat[0], mapbox_center_lon=lon[0]) 
-#    fig.update_layout(mapbox_style="stamen-watercolor", mapbox_center_lat=lat[0], mapbox_center_lon=lon[0]) 
-#    fig.update_layout(mapbox_style="stamen-terrain", mapbox_center_lat=lat[0], mapbox_center_lon=lon[0]) 
-#    fig.update_layout(title={'text': 'Location', 'x':0.5, 'y':0.925, 'xanchor': 'center', 'yanchor': 'top'})
+#   fig.update_layout(mapbox_style="stamen-watercolor", mapbox_center_lat=lat, mapbox_center_lon=lon) 
+#   fig.update_layout(mapbox_style="stamen-terrain", mapbox_center_lat=lat[0], mapbox_center_lon=lon 
+#   fig.update_layout(title={'text': 'Location', 'x':0.5, 'y':0.925, 'xanchor': 'center', 'yanchor': 'top'})
     fig.update_layout(height=300, width=600, margin={"r":80,"t":10,"l":50,"b":60})
     
     return fig

@@ -26,7 +26,7 @@ warnings.filterwarnings("ignore", category=UserWarning)
 # SETTINGS: 
 #------------------------------------------------------------------------------
 
-load_df = True
+load_df = False
 
 #------------------------------------------------------------------------------
 # METHODS
@@ -135,10 +135,10 @@ def load_dataframe(filename_txt):
     df['stationelevation'] = stationelevation
     df['stationname'] = stationname
     df['stationcountry'] = stationcountry
-#    df['stationfirstyear'] = stationfirstyear
-#    df['stationlastyear'] = stationlastyear
-#    df['stationsource'] = stationsource
-#    df['stationfirstreliable'] = stationfirstreliable
+    df['stationfirstyear'] = stationfirstyear
+    df['stationlastyear'] = stationlastyear
+    df['stationsource'] = stationsource
+    df['stationfirstreliable'] = stationfirstreliable
 #    df['stationcruindex'] = stationcruindex # NB: there are merge issues here for some stations --> DtypeWarning
 #    df['stationgridcell'] = stationgridcell # NB: there are merge issues here for some stations --> DtypeWarning
 
@@ -147,7 +147,7 @@ def load_dataframe(filename_txt):
     df['stationname'] = [ str(df['stationname'][i]).strip() for i in range(len(df)) ] 
     df['stationcountry'] = [ str(df['stationcountry'][i]).strip() for i in range(len(df)) ] 
 
-    # convert numeric variables from list of str to int  - important due to fillValue   
+    # convert numeric variables from list of str to int (important due to fillValue)   
     
     for j in range(1,13):
 
@@ -156,6 +156,7 @@ def load_dataframe(filename_txt):
     df['stationlat'] = df['stationlat'].astype('int')
     df['stationlon'] = df['stationlon'].astype('int')
     df['stationelevation'] = df['stationelevation'].astype('int')    
+    df['stationfirstreliable'] = df['stationfirstreliable'].astype('int')    
     
     # replace fill values in int variables:
         
@@ -171,6 +172,7 @@ def load_dataframe(filename_txt):
     df['stationlat'].replace(-999, np.nan, inplace=True) 
     df['stationlon'].replace(-9999, np.nan, inplace=True) 
     df['stationelevation'].replace(-9999, np.nan, inplace=True) 
+#   df['stationfirstreliable'].replace(8888, np.nan, inplace=True) 
                     
     return df
 
@@ -188,7 +190,7 @@ else:
     df = load_dataframe(filename_txt)
 
 #------------------------------------------------------------------------------
-# ADD TRAILING 0 TO STATION CODES (str)
+# ADD LEADING 0 TO STATION CODES (str)
 #------------------------------------------------------------------------------
 
 df['stationcode'] = [ str(df['stationcode'][i]).zfill(6) for i in range(len(df)) ]
@@ -223,6 +225,10 @@ for j in range(1,13):
 df['stationlat'] = df['stationlat'].astype('float32')
 df['stationlon'] = df['stationlon'].astype('float32')
 df['stationelevation'] = df['stationelevation'].astype('int16')
+df['stationfirstyear'] = df['stationfirstyear'].astype('int16')
+df['stationlastyear'] = df['stationlastyear'].astype('int16')
+df['stationsource'] = df['stationsource'].astype('int8')
+df['stationfirstreliable'] = df['stationfirstreliable'].astype('int16')
 
 #------------------------------------------------------------------------------
 # SAVE SCALED DATAFRAME
@@ -232,5 +238,4 @@ df.to_csv('df.csv')
 
 #------------------------------------------------------------------------------
 print('** END')
-
 
