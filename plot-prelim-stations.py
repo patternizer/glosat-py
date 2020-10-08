@@ -84,7 +84,7 @@ plot_fry = False
 plot_spiral = False
 plot_stripes = False
 plot_klib = False
-plot_temporal_change = False
+plot_temporal_change = True
 plot_temporal_coverage = False
 plot_spatial_coverage = False
 plot_seasonal_anomalies = False
@@ -92,7 +92,7 @@ plot_station_timeseres = False
 plot_station_climatology = False
 plot_station_locations = False
 plot_delta_cc = False; delta_cc_20C = True    
-plot_gap_analysis = True; station_count = True
+plot_gap_analysis = False; station_count = True
 
 #------------------------------------------------------------------------------
 # METHODS
@@ -946,8 +946,133 @@ if plot_temporal_change == True:
 
     print('plot_temporal_change...')
 
+    # LOAD: CRUTEM4.6.0.0-2019-12: global, NH and SH data and calculate annual means
+
+    # DATAFRAME:
+    df = pd.DataFrame(columns=['year','anom_global','anom_nh','anom_sh','area_global','area_nh','area_sh'])
+
+    # LOAD: CRUTEM4.6.0.0-2019-12: global
+    f = open('crutem4.6.0.0-2019-12.global.txt')
+    lines = f.readlines()
+    dates = []
+    anom = []
+    area = []
+    for i in range(len(lines)):
+          words = lines[i].split()
+          if len(words) > 1:
+              date = float(words[0])
+              val = (len(words)-1)*[None]
+              for j in range(len(val)):
+                  try: val[j] = float(words[j+1])
+                  except: pass
+              if not None in val:
+                  if Mod(i,2) == 0:
+                      dates.append(date)
+                      anom.append(val) 
+                  else:
+                      area.append(val)                  
+    f.close()
+    dates = np.array(dates).astype('int')
+    anom = np.array(anom)
+    area = np.array(area)
+    da = pd.DataFrame(columns=['year','1','2','3','4','5','6','7','8','9','10','11','12'])
+    da['year'] = dates
+    for j in range(1,13):
+        da[da.columns[j]] = [ anom[i][j-1] for i in range(len(anom)) ]
+    da['mean'] = da[da.columns[range(1,13)]].mean(axis=1)
+    dc = pd.DataFrame(columns=['year','1','2','3','4','5','6','7','8','9','10','11','12'])
+    dc['year'] = dates
+    for j in range(1,13):
+        dc[dc.columns[j]] = [ area[i][j-1] for i in range(len(area)) ]
+    dc['mean'] = dc[dc.columns[range(1,13)]].mean(axis=1)
+            
+    df['year'] = da['year']
+    df['anom_global'] = da['mean']
+    df['area_global'] = dc['mean']
+    
+    # LOAD: CRUTEM4.6.0.0-2019-12: NH
+    f = open('crutem4.6.0.0-2019-12.nhemi.txt')
+    lines = f.readlines()
+    dates = []
+    anom = []
+    area = []
+    for i in range(len(lines)):
+          words = lines[i].split()
+          if len(words) > 1:
+              date = float(words[0])
+              val = (len(words)-1)*[None]
+              for j in range(len(val)):
+                  try: val[j] = float(words[j+1])
+                  except: pass
+              if not None in val:
+                  if Mod(i,2) == 0:
+                      dates.append(date)
+                      anom.append(val) 
+                  else:
+                      area.append(val)                  
+    f.close()
+    dates = np.array(dates).astype('int')
+    anom = np.array(anom)
+    area = np.array(area)
+    da = pd.DataFrame(columns=['year','1','2','3','4','5','6','7','8','9','10','11','12'])
+    da['year'] = dates
+    for j in range(1,13):
+        da[da.columns[j]] = [ anom[i][j-1] for i in range(len(anom)) ]
+    da['mean'] = da[da.columns[range(1,13)]].mean(axis=1)
+    dc = pd.DataFrame(columns=['year','1','2','3','4','5','6','7','8','9','10','11','12'])
+    dc['year'] = dates
+    for j in range(1,13):
+        dc[dc.columns[j]] = [ area[i][j-1] for i in range(len(area)) ]
+    dc['mean'] = dc[dc.columns[range(1,13)]].mean(axis=1)
+            
+    df['year'] = da['year']
+    df['anom_nh'] = da['mean']
+    df['area_nh'] = dc['mean']
+    
+    # LOAD: CRUTEM4.6.0.0-2019-12: SH
+    f = open('crutem4.6.0.0-2019-12.shemi.txt')
+    lines = f.readlines()
+    dates = []
+    anom = []
+    area = []
+    for i in range(len(lines)):
+          words = lines[i].split()
+          if len(words) > 1:
+              date = float(words[0])
+              val = (len(words)-1)*[None]
+              for j in range(len(val)):
+                  try: val[j] = float(words[j+1])
+                  except: pass
+              if not None in val:
+                  if Mod(i,2) == 0:
+                      dates.append(date)
+                      anom.append(val) 
+                  else:
+                      area.append(val)                  
+    f.close()
+    dates = np.array(dates).astype('int')
+    anom = np.array(anom)
+    area = np.array(area)
+    da = pd.DataFrame(columns=['year','1','2','3','4','5','6','7','8','9','10','11','12'])
+    da['year'] = dates
+    for j in range(1,13):
+        da[da.columns[j]] = [ anom[i][j-1] for i in range(len(anom)) ]
+    da['mean'] = da[da.columns[range(1,13)]].mean(axis=1)
+    dc = pd.DataFrame(columns=['year','1','2','3','4','5','6','7','8','9','10','11','12'])
+    dc['year'] = dates
+    for j in range(1,13):
+        dc[dc.columns[j]] = [ area[i][j-1] for i in range(len(area)) ]
+    dc['mean'] = dc[dc.columns[range(1,13)]].mean(axis=1)
+
+    df['year'] = da['year']
+    df['anom_sh'] = da['mean']
+    df['area_sh'] = dc['mean']
+
     ds = df_temp.copy()    
     
+#   nmonthly = ds[ds.columns[range(1,13)]].count().sum() # --> 8444447 
+    nmonthly = ds[ds.columns[range(1,13)]].dropna().count().sum() # --> 7843860
+     
     #------------------------------------------------------------------------------
     # PLOT: temporal change by region: at request of Martin Stendel
     #------------------------------------------------------------------------------
@@ -959,27 +1084,58 @@ if plot_temporal_change == True:
     Q1 = pd.Series(bins).iloc[(pd.Series(np.cumsum(counts))-np.sum(counts)*0.25).abs().argsort()[:1]].values[0]
     Q2 = pd.Series(bins).iloc[(pd.Series(np.cumsum(counts))-np.sum(counts)*0.50).abs().argsort()[:1]].values[0]
     Q3 = pd.Series(bins).iloc[(pd.Series(np.cumsum(counts))-np.sum(counts)*0.75).abs().argsort()[:1]].values[0]
+    xmin = np.min(bins)
+    xmax = np.max(bins)
+    ymin = np.min(counts)
+    ymax = np.max(counts)
 
     figstr = 'temporal-change-full.png'
-    titlestr = 'GloSATp02 yearly coverage (' + str(ds['year'].min()) + '-' +  str(ds['year'].max()) + '): N(obs)=' + "{0:.0f}".format(np.sum(counts)) + ', N(stations)=' + "{0:.0f}".format(nstations) 
+    titlestr = 'GloSATp02 temporal coverage (' + str(ds['year'].min()) + '-' +  str(ds['year'].max()) + '): N(obs)=' + "{0:.0f}".format(np.sum(nmonthly)) + ', N(stations)=' + "{0:.0f}".format(nstations) 
              
     fig, ax = plt.subplots(figsize=(15,10))          
     plt.fill_between(bins, counts, step="pre", facecolor='lightgrey', alpha=1.0)
     plt.axvline(x=Q1, color='blue', label='Q1: ' + "{0:.0f}".format(Q1))    
     plt.axvline(x=Q2, color='red', label='Q2: ' + "{0:.0f}".format(Q2))    
     plt.axvline(x=Q3, color='blue', label='Q3: ' + "{0:.0f}".format(Q3))    
-    plt.tick_params(labelsize=12)    
-    plt.legend(loc='upper left', fontsize=12)
+    plt.xlim(xmin,xmax)    
+    plt.ylim(0,ymax)    
+    plt.tick_params(labelsize=16)    
+    plt.legend(loc='lower left', fontsize=16)
     plt.xlabel("Year", fontsize=fontsize)
-    plt.ylabel("Monthly values per year", fontsize=fontsize)
+    plt.ylabel("Contributing stations per year", fontsize=fontsize)
     plt.title(titlestr, fontsize=fontsize)
     plt.savefig(figstr)
     plt.close(fig)
         
-    figstr = 'temporal-change-latitude-from-1950.png'
-    titlestr = 'GloSATp02 yearly coverage (1950-2020) by latitudinal band'
+    figstr = 'temporal-change-full-2.png'
+    titlestr = 'GloSATp02 temporal coverage (' + str(ds['year'].min()) + '-' +  str(ds['year'].max()) + '): N(obs)=' + "{0:.0f}".format(np.sum(nmonthly)) + ', N(stations)=' + "{0:.0f}".format(nstations) 
 
-    step = 15
+    fig, ax = plt.subplots(figsize=(15,10))          
+    
+    nstations = []
+    yearlist = np.sort(ds['year'].unique())
+    for i in range(len(yearlist)):        
+        yeari = ds[ ds['year']==yearlist[i]]        
+        nstationsi = len(yeari['stationcode'].unique())
+        nstations.append(nstationsi)
+
+    plt.plot(yearlist, nstations, color='black', lw=2)
+    plt.fill_between(yearlist, nstations, step="pre", facecolor='lightgrey', alpha=1.0)        
+    plt.xlim(xmin,xmax)    
+    plt.ylim(0,ymax)
+    ax.xaxis.grid(True, which='major')          
+    ax.yaxis.grid(True, which='major')          
+    ax.set_xlabel("Year", fontsize=fontsize)
+    ax.set_ylabel("Contributing stations per year", fontsize=fontsize)
+    plt.tick_params(labelsize=16)    
+    plt.title(titlestr, fontsize=fontsize)
+    plt.savefig(figstr)
+    plt.close(fig)
+
+    figstr = 'temporal-change-latitude-from-1950.png'
+    titlestr = 'GloSATp02 temporal coverage (1950-2020) by latitudinal band'
+
+    step = 30
     bands = np.arange(-90,90+step,step=step)
     index = pd.Index(bins.astype(int), name='date')
     data = []
@@ -989,50 +1145,139 @@ if plot_temporal_change == True:
         bandi = ds[ (ds['stationlat']>=bands[i]) & (ds['stationlat']<=bands[i+1]) ]
         nstationsi = len(bandi['stationcode'].unique())
         countsi, edgesi = np.histogram(bandi['year'], nbins, range=[ds['year'].min(),bandi['year'].max()], density=False)        
+        nstr = r'$\degree$N'
+        sstr = r'$\degree$S'
+        if bands[i+1]<=0:
+            hstr = sstr
+        elif bands[i+1]>0:
+            hstr = nstr                    
         if i == 0:
-            labeli = '('+str(bands[i])+','+str(bands[i+1])+') n(stations)='+str(nstationsi)
+            labeli = '('+str(np.abs(bands[i])).zfill(2)+hstr+','+str(np.abs(bands[i+1])).zfill(2)+hstr+') n(stations)='+str(nstationsi)
         else:
-            labeli = '('+str(bands[i]+1)+','+str(bands[i+1])+') n(stations)='+str(nstationsi)
+            labeli = '('+str(np.abs(bands[i]+1)).zfill(2)+hstr+','+str(np.abs(bands[i+1])).zfill(2)+hstr+') n(stations)='+str(nstationsi)
         dh[labeli] = tuple(countsi)
-            
-    ax = dh[dh.index>=1950].plot(kind='bar', stacked=True, figsize=(15, 10))
+                    
+    ax = dh[dh.index>=1950].plot(kind='bar', alpha=0.5, stacked=True, figsize=(15, 10))
+    ax.step(yearlist, nstations, color='black', lw=2, label='global')
     ax.set_xlabel("Year", fontsize=fontsize)
-    ax.set_ylabel("Monthly values per year", fontsize=fontsize)
-    plt.tick_params(labelsize=12)    
-    plt.legend(loc='upper left', fontsize=12)
+    ax.set_ylabel("Contributing stations per year", fontsize=fontsize)
+#   plt.xlim(1950,xmax)    
+    plt.ylim(0,ymax)
+    plt.tick_params(labelsize=14)    
+    plt.legend(loc='lower left', fontsize=16)
     plt.title(titlestr, fontsize=fontsize)
     plt.savefig(figstr)
     plt.close(fig)
 
-    figstr = 'temporal-change-full-latitude-full2.png'
-    titlestr = 'GloSATp02 yearly coverage (' + str(ds['year'].min()) + '-' + str(ds['year'].max()) + ') by latitudinal band'
+    figstr = 'temporal-change-full-latitude.png'
+    titlestr = 'GloSATp02 temporal coverage (' + str(ds['year'].min()) + '-' + str(ds['year'].max()) + ') by latitudinal band'
 
-    fig, ax = plt.subplots(figsize=(15,10))          
-    
+    countsi_cumulative = np.zeros(len(yearlist))
+
+    fig, ax = plt.subplots(figsize=(15,10))              
     for i in range(len(bands)-1):        
         bandi = ds[ (ds['stationlat']>=bands[i]) & (ds['stationlat']<=bands[i+1]) ]
         nstationsi = len(bandi['stationcode'].unique())
         binsi = bins
         countsi, edgesi = np.histogram(bandi['year'], nbins, range=[ds['year'].min(),bandi['year'].max()], density=False)        
-        if i == 0:
-            labeli = '('+str(bands[i])+','+str(bands[i+1])+') n(stations)='+str(nstationsi)
+        nstr = r'$\degree$N'
+        sstr = r'$\degree$S'
+        if bands[i+1]<=0:
+            hstr = sstr
+        elif bands[i+1]>0:
+            hstr = nstr                    
+        if i == 0:            
+            labeli = '('+str(np.abs(bands[i])).zfill(2)+hstr+','+str(np.abs(bands[i+1])).zfill(2)+hstr+') n(stations)='+str(nstationsi)
         else:
-            labeli = '('+str(bands[i]+1)+','+str(bands[i+1])+') n(stations)='+str(nstationsi)
-        plt.plot(binsi, countsi, label=labeli)
-#       plt.fill_between(binsi, countsi, step="pre", alpha=0.2, label=labeli)
+            labeli = '('+str(np.abs(bands[i]+1)).zfill(2)+hstr+','+str(np.abs(bands[i+1])).zfill(2)+hstr+') n(stations)='+str(nstationsi)
+        countsi_cumulative = countsi_cumulative + countsi            
+        plt.fill_between(binsi, countsi_cumulative, step="pre", alpha=0.2, label=labeli)
+        plt.plot(binsi, countsi_cumulative, lw=2)
 
+    plt.plot(yearlist, nstations, color='black', lw=2, label='global')
     ax.set_xlabel("Year", fontsize=fontsize)
-    ax.set_ylabel("Monthly values per year", fontsize=fontsize)
-#    plt.xlim([1900,2020])
-#    ax.xaxis.grid(True, which='major')      
-#    ax.yaxis.grid(True, which='major')      
-    plt.tick_params(labelsize=12)    
-    plt.legend(loc='upper left', fontsize=12)
+    ax.set_ylabel("Contributing stations per year", fontsize=fontsize)
+    plt.xlim(xmin,xmax)    
+    plt.ylim(0,ymax)
+    plt.tick_params(labelsize=16)    
+    plt.legend(loc='lower left', fontsize=16)
 #   plt.legend(bbox_to_anchor=(1.0, 1), loc='upper left')
     plt.title(titlestr, fontsize=fontsize)
     plt.savefig(figstr)
     plt.close(fig)
-    
+
+    figstr = 'temporal-change-full-latitude-2.png'
+    titlestr = 'GloSATp02 temporal coverage (' + str(ds['year'].min()) + '-' + str(ds['year'].max()) + ') by latitudinal band'
+
+    countsi_cumulative = np.zeros(len(yearlist))
+
+    fig, ax = plt.subplots(figsize=(15,10))              
+    for i in range(len(bands)-1):        
+        bandi = ds[ (ds['stationlat']>=bands[i]) & (ds['stationlat']<=bands[i+1]) ]
+        nstationsi = len(bandi['stationcode'].unique())
+        binsi = bins
+        countsi, edgesi = np.histogram(bandi['year'], nbins, range=[ds['year'].min(),bandi['year'].max()], density=False)        
+        nstr = r'$\degree$N'
+        sstr = r'$\degree$S'
+        if bands[i+1]<=0:
+            hstr = sstr
+        elif bands[i+1]>0:
+            hstr = nstr                    
+        if i == 0:            
+            labeli = '('+str(np.abs(bands[i])).zfill(2)+hstr+','+str(np.abs(bands[i+1])).zfill(2)+hstr+') n(stations)='+str(nstationsi)
+        else:
+            labeli = '('+str(np.abs(bands[i]+1)).zfill(2)+hstr+','+str(np.abs(bands[i+1])).zfill(2)+hstr+') n(stations)='+str(nstationsi)
+        countsi_cumulative = countsi_cumulative + countsi            
+        plt.fill_between(binsi, countsi_cumulative, step="pre", alpha=0.2, label=labeli)
+        if i<len(bands)-2:
+            plt.step(binsi, countsi_cumulative, lw=2)
+        else:
+            plt.step(yearlist, nstations, color='black', lw=2, label='global')
+            
+    ax.set_xlabel("Year", fontsize=fontsize)
+    ax.set_ylabel("Contributing stations per year", fontsize=fontsize)
+    plt.xlim(1950,2020)
+    plt.ylim(0,ymax)
+    plt.tick_params(labelsize=16)    
+    plt.legend(loc='lower left', fontsize=16)
+#   plt.legend(bbox_to_anchor=(1.0, 1), loc='upper left')
+    plt.title(titlestr, fontsize=fontsize)
+    plt.savefig(figstr)
+    plt.close(fig)
+
+    figstr = 'crutem-anomalies.png'
+    titlestr = 'CRUTEM4.6.0.0-2019-12 temperature anomalies (' + str(df['year'].min()) + '-' +  str(df['year'].max())+')'
+             
+    fig, ax = plt.subplots(figsize=(15,10))          
+    plt.bar(x=df['year'], height=df['anom_global'], color='lightgrey', label='global')
+    plt.step(df['year'], df['anom_nh'], color='red', lw=2, label='NH')
+    plt.step(df['year'], df['anom_sh'], color='blue', lw=2, label='SH')
+    plt.xlim(df['year'].min(),df['year'].max())    
+    plt.tick_params(labelsize=16)    
+    plt.legend(loc='upper left', fontsize=16)
+    plt.xlabel('Year', fontsize=fontsize)
+    plt.ylabel(r'Mean annual temperature anomaly (from 1961-1990), $\degree$C', fontsize=fontsize)
+    plt.title(titlestr, fontsize=fontsize)
+    plt.savefig(figstr)
+    plt.close(fig)
+
+    figstr = 'crutem-coverage.png'
+    titlestr = 'CRUTEM4.6.0.0-2019-12 percentage coverage (' + str(df['year'].min()) + '-' +  str(df['year'].max())+')'
+             
+    fig, ax = plt.subplots(figsize=(15,10))          
+#   plt.bar(x=df['year'], height=df['area_global'], color='lightgrey', label='global')
+    plt.plot(df['year'], df['area_global'], color='lightgrey', lw=5, label='global')
+    plt.plot(df['year'], df['area_nh'], color='red', lw=2, label='NH')
+    plt.plot(df['year'], df['area_sh'], color='blue', lw=2, label='SH')
+    plt.xlim(df['year'].min(),df['year'].max())    
+    plt.tick_params(labelsize=16)    
+    plt.legend(loc='upper left', fontsize=16)
+    plt.xlabel('Year', fontsize=fontsize)
+    plt.ylabel(r'Mean annual coverage, %', fontsize=fontsize)
+    plt.title(titlestr, fontsize=fontsize)
+    plt.savefig(figstr)
+    plt.close(fig)
+
 #------------------------------------------------------------------------------
 # PLOT: delta CC +/- 30 years around median date value
 #------------------------------------------------------------------------------
