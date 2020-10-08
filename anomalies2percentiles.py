@@ -1,10 +1,5 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-Created on Fri Oct  2 17:59:14 2020
-
-@author: patternizer
-"""
 
 import numpy as np
 import pandas as pd
@@ -69,11 +64,11 @@ t_yearly = xr.cftime_range(start=str(da['year'].iloc[0]), periods=len(ts_yearly)
 t = t_monthly[:-2]
 ts = ts_monthly[:-2]
 
-t_tmp = t[(t.year>1960) & (t.year<1991)]
-ts_tmp = ts[(t.year>1960) & (t.year<1991)]
+#t_tmp = t[(t.year>1960) & (t.year<1991)]
+#ts_tmp = ts[(t.year>1960) & (t.year<1991)]
+#t=t_tmp
+#ts=ts_tmp
 
-t=t_tmp
-ts=ts_tmp
 # ts_stats = pd.DataFrame(ts, columns=['timeseries']).describe()
 
 # REMAP: derive data vectors
@@ -152,9 +147,14 @@ for bin in range(len(chi_bins)-1):
     expected_frequency.append(expected_cdf_area)    
 expected_frequency = np.array(expected_frequency) * n
 cum_expected_frequency = np.cumsum(expected_frequency)
-
 chi_square = sum (((cum_expected_frequency - cum_observed_frequency) ** 2) / cum_observed_frequency)
 #-----------------------------------------------------------------------------
+
+p10extremes = z < gamma_bins[10]
+p90extremes = z > gamma_bins[90]
+p10extremes_frac = p10extremes.sum()/n
+p90extremes_frac = p90extremes.sum()/n
+
             
 # PLOT: histograms + PDFs + quantiles
  
@@ -225,16 +225,11 @@ plt.savefig('had-cet-gamma-fit-pp-qq.png')
 
 # PLOT: timeseries + quantiles + exceedence fraction
 
-p10extremes = z < gamma_bins[10]
-p90extremes = z > gamma_bins[90]
-p10extremes_frac = p10extremes.sum()/n
-p90extremes_frac = p90extremes.sum()/n
-
 fig,ax = plt.subplots(figsize=(15,10))
 plt.plot(t, z, label='Had-CET monthly anomalies (standardised)', marker=".", color='lightgrey', lw=0.5)
 tmin, tmax = ax.get_xlim()
-plt.scatter(t[p10extremes], z[p10extremes], marker=".", color='blue', label='Extreme cases < P10 (exceedence fraction='+str(round(p10extremes_frac*100,2))+'%)')  
-plt.scatter(t[p90extremes], z[p90extremes], marker=".", color='darkblue', label='Extreme cases > P90 (exceedence fraction='+str(round(p90extremes_frac*100,2))+'%)')           
+plt.plot(t[p10extremes], z[p10extremes], marker=".", color='blue', lw=2, linestyle='none', label='Extreme cases < P10 (exceedence fraction='+str(round(p10extremes_frac*100,2))+'%)')  
+plt.plot(t[p90extremes], z[p90extremes], marker=".", color='darkblue', lw=2, linestyle='none', label='Extreme cases > P90 (exceedence fraction='+str(round(p90extremes_frac*100,2))+'%)')           
 plt.axhline(gamma_bins[90], tmin, tmax, color='darkblue', ls='--', label=r'$\Gamma$: P90')    
 plt.axhline(gamma_bins[75], tmin, tmax, color='darkred', ls='--', label=r'$\Gamma$: P75 (Q3)')
 plt.axhline(gamma_bins[50], tmin, tmax, color='black', ls='--', label=r'$\Gamma$: P50 (median)')
@@ -257,7 +252,7 @@ plt.scatter(z_map100, z_cdf100, marker='o', color='teal', facecolor='cyan', lw=2
 plt.legend(fontsize=12)
 plt.xlabel(r'Standard deviations, $\sigma$', fontsize=fontsize)
 plt.ylabel('Cumulative Distribution Function (CDF)', fontsize=fontsize)
-plt.xlim(-maxsigma,maxsigma)
+plt.xlim(-z_maxsigma,z_maxsigma)
 plt.ylim(0,1)
 ax.xaxis.grid(True, which='major')  
 ax.yaxis.grid(True, which='major')  
