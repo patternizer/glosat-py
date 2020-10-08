@@ -4,8 +4,8 @@
 #------------------------------------------------------------------------------
 # PROGRAM: plot-prelim-stations.py
 #------------------------------------------------------------------------------
-# Version 0.15
-# 28 September, 2020
+# Version 0.16
+# 9 October, 2020
 # Michael Taylor
 # https://patternizer.github.io
 # patternizer AT gmail DOT com
@@ -946,10 +946,12 @@ if plot_temporal_change == True:
 
     print('plot_temporal_change...')
 
+    #------------------------------------------------------------------------------
     # LOAD: CRUTEM4.6.0.0-2019-12: global, NH and SH data and calculate annual means
+    #------------------------------------------------------------------------------
 
     # DATAFRAME:
-    df = pd.DataFrame(columns=['year','anom_global','anom_nh','anom_sh','area_global','area_nh','area_sh'])
+    df = pd.DataFrame(columns=['year','crutem_anom_global','crutem_anom_nh','crutem_anom_sh','crutem_area_global','crutem_area_nh','crutem_area_sh'])
 
     # LOAD: CRUTEM4.6.0.0-2019-12: global
     f = open('crutem4.6.0.0-2019-12.global.txt')
@@ -987,8 +989,8 @@ if plot_temporal_change == True:
     dc['mean'] = dc[dc.columns[range(1,13)]].mean(axis=1)
             
     df['year'] = da['year']
-    df['anom_global'] = da['mean']
-    df['area_global'] = dc['mean']
+    df['crutem_anom_global'] = da['mean']
+    df['crutem_area_global'] = dc['mean']
     
     # LOAD: CRUTEM4.6.0.0-2019-12: NH
     f = open('crutem4.6.0.0-2019-12.nhemi.txt')
@@ -1026,8 +1028,8 @@ if plot_temporal_change == True:
     dc['mean'] = dc[dc.columns[range(1,13)]].mean(axis=1)
             
     df['year'] = da['year']
-    df['anom_nh'] = da['mean']
-    df['area_nh'] = dc['mean']
+    df['crutem_anom_nh'] = da['mean']
+    df['crutem_area_nh'] = dc['mean']
     
     # LOAD: CRUTEM4.6.0.0-2019-12: SH
     f = open('crutem4.6.0.0-2019-12.shemi.txt')
@@ -1065,8 +1067,125 @@ if plot_temporal_change == True:
     dc['mean'] = dc[dc.columns[range(1,13)]].mean(axis=1)
 
     df['year'] = da['year']
-    df['anom_sh'] = da['mean']
-    df['area_sh'] = dc['mean']
+    df['crutem_anom_sh'] = da['mean']
+    df['crutem_area_sh'] = dc['mean']
+
+    # LOAD: HadCRUT.4.6.0.0: global
+    f = open('HadCRUT4-gl.dat')
+    lines = f.readlines()
+    dates = []
+    anom = []
+    area = []
+    for i in range(len(lines)):
+          words = lines[i].split()
+          if len(words) > 1:
+              date = float(words[0])
+              val = (len(words)-1)*[None]
+              for j in range(len(val)):
+                  try: val[j] = float(words[j+1])
+                  except: pass
+              if not None in val:
+                  if Mod(i,2) == 0:
+                      dates.append(date)
+                      anom.append(val) 
+                  else:
+                      area.append(val)                  
+    f.close()
+    dates = np.array(dates).astype('int')
+    anom = np.array(anom)
+    area = np.array(area)
+    da = pd.DataFrame(columns=['year','1','2','3','4','5','6','7','8','9','10','11','12'])
+    da['year'] = dates
+    for j in range(1,13):
+        da[da.columns[j]] = [ anom[i][j-1] for i in range(len(anom)) ]
+    da['mean'] = da[da.columns[range(1,13)]].mean(axis=1)
+    dc = pd.DataFrame(columns=['year','1','2','3','4','5','6','7','8','9','10','11','12'])
+    dc['year'] = dates
+    for j in range(1,13):
+        dc[dc.columns[j]] = [ area[i][j-1] for i in range(len(area)) ]
+    dc['mean'] = dc[dc.columns[range(1,13)]].mean(axis=1)
+            
+    df['year'] = da['year']
+    df['hadcrut_anom_global'] = da['mean']
+    df['hadcrut_area_global'] = dc['mean']
+    
+    # LOAD: HadCRUT.4.6.0.0: NH
+    f = open('HadCRUT4-nh.dat')
+    lines = f.readlines()
+    dates = []
+    anom = []
+    area = []
+    for i in range(len(lines)):
+          words = lines[i].split()
+          if len(words) > 1:
+              date = float(words[0])
+              val = (len(words)-1)*[None]
+              for j in range(len(val)):
+                  try: val[j] = float(words[j+1])
+                  except: pass
+              if not None in val:
+                  if Mod(i,2) == 0:
+                      dates.append(date)
+                      anom.append(val) 
+                  else:
+                      area.append(val)                  
+    f.close()
+    dates = np.array(dates).astype('int')
+    anom = np.array(anom)
+    area = np.array(area)
+    da = pd.DataFrame(columns=['year','1','2','3','4','5','6','7','8','9','10','11','12'])
+    da['year'] = dates
+    for j in range(1,13):
+        da[da.columns[j]] = [ anom[i][j-1] for i in range(len(anom)) ]
+    da['mean'] = da[da.columns[range(1,13)]].mean(axis=1)
+    dc = pd.DataFrame(columns=['year','1','2','3','4','5','6','7','8','9','10','11','12'])
+    dc['year'] = dates
+    for j in range(1,13):
+        dc[dc.columns[j]] = [ area[i][j-1] for i in range(len(area)) ]
+    dc['mean'] = dc[dc.columns[range(1,13)]].mean(axis=1)
+            
+    df['year'] = da['year']
+    df['hadcrut_anom_nh'] = da['mean']
+    df['hadcrut_area_nh'] = dc['mean']
+    
+    # LOAD: HadCRUT.4.6.0.0: SH
+    f = open('HadCRUT4-sh.dat')
+    lines = f.readlines()
+    dates = []
+    anom = []
+    area = []
+    for i in range(len(lines)):
+          words = lines[i].split()
+          if len(words) > 1:
+              date = float(words[0])
+              val = (len(words)-1)*[None]
+              for j in range(len(val)):
+                  try: val[j] = float(words[j+1])
+                  except: pass
+              if not None in val:
+                  if Mod(i,2) == 0:
+                      dates.append(date)
+                      anom.append(val) 
+                  else:
+                      area.append(val)                  
+    f.close()
+    dates = np.array(dates).astype('int')
+    anom = np.array(anom)
+    area = np.array(area)
+    da = pd.DataFrame(columns=['year','1','2','3','4','5','6','7','8','9','10','11','12'])
+    da['year'] = dates
+    for j in range(1,13):
+        da[da.columns[j]] = [ anom[i][j-1] for i in range(len(anom)) ]
+    da['mean'] = da[da.columns[range(1,13)]].mean(axis=1)
+    dc = pd.DataFrame(columns=['year','1','2','3','4','5','6','7','8','9','10','11','12'])
+    dc['year'] = dates
+    for j in range(1,13):
+        dc[dc.columns[j]] = [ area[i][j-1] for i in range(len(area)) ]
+    dc['mean'] = dc[dc.columns[range(1,13)]].mean(axis=1)
+
+    df['year'] = da['year']
+    df['hadcrut_anom_sh'] = da['mean']
+    df['hadcrut_area_sh'] = dc['mean']
 
     ds = df_temp.copy()    
     
@@ -1249,9 +1368,9 @@ if plot_temporal_change == True:
     titlestr = 'CRUTEM4.6.0.0-2019-12 temperature anomalies (' + str(df['year'].min()) + '-' +  str(df['year'].max())+')'
              
     fig, ax = plt.subplots(figsize=(15,10))          
-    plt.bar(x=df['year'], height=df['anom_global'], color='lightgrey', label='global')
-    plt.step(df['year'], df['anom_nh'], color='red', lw=2, label='NH')
-    plt.step(df['year'], df['anom_sh'], color='blue', lw=2, label='SH')
+    plt.bar(x=df['year'], height=df['crutem_anom_global'], color='lightgrey', label='global')
+    plt.step(df['year'], df['crutem_anom_nh'], color='red', lw=2, label='NH')
+    plt.step(df['year'], df['crutem_anom_sh'], color='blue', lw=2, label='SH')
     plt.xlim(df['year'].min(),df['year'].max())    
     plt.tick_params(labelsize=16)    
     plt.legend(loc='upper left', fontsize=16)
@@ -1266,9 +1385,42 @@ if plot_temporal_change == True:
              
     fig, ax = plt.subplots(figsize=(15,10))          
 #   plt.bar(x=df['year'], height=df['area_global'], color='lightgrey', label='global')
-    plt.plot(df['year'], df['area_global'], color='lightgrey', lw=5, label='global')
-    plt.plot(df['year'], df['area_nh'], color='red', lw=2, label='NH')
-    plt.plot(df['year'], df['area_sh'], color='blue', lw=2, label='SH')
+    plt.plot(df['year'], df['crutem_area_global'], color='lightgrey', lw=5, label='global')
+    plt.plot(df['year'], df['crutem_area_nh'], color='red', lw=2, label='NH')
+    plt.plot(df['year'], df['crutem_area_sh'], color='blue', lw=2, label='SH')
+    plt.xlim(df['year'].min(),df['year'].max())    
+    plt.tick_params(labelsize=16)    
+    plt.legend(loc='upper left', fontsize=16)
+    plt.xlabel('Year', fontsize=fontsize)
+    plt.ylabel(r'Mean annual coverage, %', fontsize=fontsize)
+    plt.title(titlestr, fontsize=fontsize)
+    plt.savefig(figstr)
+    plt.close(fig)
+
+    figstr = 'hadcrut-anomalies.png'
+    titlestr = 'HadCRUT4.6.0.0 temperature anomalies (' + str(df['year'].min()) + '-' +  str(df['year'].max())+')'
+             
+    fig, ax = plt.subplots(figsize=(15,10))          
+    plt.bar(x=df['year'], height=df['hadcrut_anom_global'], color='lightgrey', label='global')
+    plt.step(df['year'], df['hadcrut_anom_nh'], color='red', lw=2, label='NH')
+    plt.step(df['year'], df['hadcrut_anom_sh'], color='blue', lw=2, label='SH')
+    plt.xlim(df['year'].min(),df['year'].max())    
+    plt.tick_params(labelsize=16)    
+    plt.legend(loc='upper left', fontsize=16)
+    plt.xlabel('Year', fontsize=fontsize)
+    plt.ylabel(r'Mean annual temperature anomaly (from 1961-1990), $\degree$C', fontsize=fontsize)
+    plt.title(titlestr, fontsize=fontsize)
+    plt.savefig(figstr)
+    plt.close(fig)
+
+    figstr = 'hadcrut-coverage.png'
+    titlestr = 'HadCRUT4.6.0.0 percentage coverage (' + str(df['year'].min()) + '-' +  str(df['year'].max())+')'
+             
+    fig, ax = plt.subplots(figsize=(15,10))          
+#   plt.bar(x=df['year'], height=df['area_global'], color='lightgrey', label='global')
+    plt.plot(df['year'], df['hadcrut_area_global'], color='lightgrey', lw=5, label='global')
+    plt.plot(df['year'], df['hadcrut_area_nh'], color='red', lw=2, label='NH')
+    plt.plot(df['year'], df['hadcrut_area_sh'], color='blue', lw=2, label='SH')
     plt.xlim(df['year'].min(),df['year'].max())    
     plt.tick_params(labelsize=16)    
     plt.legend(loc='upper left', fontsize=16)
