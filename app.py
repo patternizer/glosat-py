@@ -3,8 +3,8 @@
 #------------------------------------------------------------------------------
 # PROGRAM: app.py
 #------------------------------------------------------------------------------
-# Version 0.11
-# 9 October, 2020
+# Version 0.12
+# 12 October, 2020
 # Michael Taylor
 # https://patternizer.github.io
 # patternizer AT gmail DOT com
@@ -17,6 +17,8 @@
 import numpy as np
 import numpy.ma as ma
 from mod import Mod
+import scipy
+import scipy.stats as stats    
 import pandas as pd
 import xarray as xr
 import pickle
@@ -568,15 +570,15 @@ def update_plot_climatology(value,trim):
     X = X[mask]
     Y = Y[mask]
 
-    # ADD WHITE NOISE FOR DUPLICATES IN COLOUR MAPPING
+    # Add miniscule (1e-6) white noise to fix duplicates in colour mapping
 
     n = np.isfinite(ts_yearly).sum()
     noise = np.random.normal(0,1,n)/1e6
     ts_yearly_normed_whitened = ts_yearly_normed + noise
 
-    ##########################################################################
-    # PROBLEM = ARGSORT WITH REPEATED ts_yearly_normed VALUES!!!!!
-    ##########################################################################
+    # fig,ax = plt.subplots()
+    # plt.plot(t_yearly, ts_yearly_normed)
+    # plt.scatter(np.array(t_yearly), ts_yearly_normed_whitened, c=ts_yearly_normed_whitened, cmap='RdBu_r', marker='o')
 
 #   colors = cmocean.cm.balance(np.linspace(0.05,0.95,n)) 
     colors = cmocean.cm.rain(np.linspace(0.05,0.95,n)) 
@@ -584,11 +586,72 @@ def update_plot_climatology(value,trim):
     mapidx = ts_yearly_normed_whitened.argsort()
     hexcolors_mapped = [ hexcolors[mapidx[i]] for i in range(len(mapidx)) ]
 
-    fig,ax = plt.subplots()
-    plt.plot(t_yearly, ts_yearly_normed)
-    plt.scatter(np.array(t_yearly), ts_yearly_normed_whitened, c=ts_yearly_normed_whitened, cmap='RdBu_r', marker='o')
+    # Calculate gamma distribution fit and extract percentile bounding curves
+
+    df = pd.DataFrame(columns=['min','max','normal','p5','p10','p90','p95'], index=np.arange(1,13))
+    for j in range(1,13):
+
+        y = da[str(j)]
+    #   z = (y-y.mean())/y.std()
+        z = y[np.isfinite(y)]
+        disttype = 'gamma'
+        dist = getattr(scipy.stats, disttype)
+        param = dist.fit(z)
+        gamma_median = dist.median(param[0], loc=param[1], scale=param[2])       # q50
+        gamma_10_90 = dist.interval(0.8, param[0], loc=param[1], scale=param[2]) # q10 and q90
+        gamma_5_95 = dist.interval(0.9, param[0], loc=param[1], scale=param[2])  # q5 and q95	
+        gamma = dist.rvs(param[0], loc=param[1], scale=param[2], size=len(z))
+        gamma_sorted = np.sort(gamma)
+        gamma_bins = np.percentile(gamma_sorted, range(0,101))
+        z_min = np.min(z)
+        z_max = np.max(z)
+        
+        df['min'][j] = z_min
+        df['max'][j] = z_max
+        df['normal'][j] = gamma_median
+        df['p5'][j] = gamma_5_95[0]
+        df['p95'][j] = gamma_5_95[1]
+        df['p10'][j] = gamma_10_90[0]
+        df['p90'][j] = gamma_10_90[1]
     
+        # p10extremes = z < gamma_bins[10]
+        # p90extremes = z > gamma_bins[90]
+        # p10extremes_frac = p10extremes.sum()/n
+        # p90extremes_frac = p90extremes.sum()/n
+
     data = []
+    trace_9_95 = [        
+            go.Scatter(x=np.arange(1,13), y=np.array(df['p95'].astype(float)), 
+                       mode='lines', 
+                       fill=None,
+                       line=dict(width=1.0, color='lightgrey'),
+                       name='95% centile',      
+                       showlegend=False),                       
+            go.Scatter(x=np.arange(1,13), y=np.array(df['p5'].astype(float)), 
+                       mode='lines', 
+                       fill='tonexty',
+                       line=dict(width=1.0, color='lightgrey'),
+                       name='5-95% range',      
+                       showlegend=True),
+            go.Scatter(x=np.arange(1,13), y=np.array(df['p5'].astype(float)), 
+                       mode='lines', 
+                       fill=None,
+                       line=dict(width=1.0, color='lightgrey'),
+                       name='5% centile',      
+                       showlegend=False)
+        ] 
+    data = data + trace_9_95
+    trace_max=[go.Scatter(                      
+        x=np.arange(1,13), y=df['max'], mode='lines', 
+        line=dict(width=3, color='pink'),
+        name='Highest in record')]
+    data = data + trace_max
+    trace_min=[go.Scatter(                      
+        x=np.arange(1,13), y=df['min'], mode='lines', 
+        line=dict(width=3, color='cyan'),
+        name='Lowest in record')]
+    data = data + trace_min
+    
     for k in range(n):
 #        if Y.iloc[:,k].isnull().any():
 #        if Y.iloc[k,:].isnull().all():
@@ -596,16 +659,33 @@ def update_plot_climatology(value,trim):
 #        else:
             trace=[go.Scatter(                      
                 x=np.arange(1,13), y=np.array(Y)[k,:], 
-#               mode='lines', 
-                mode='lines+markers', 
-                line=dict(width=1.5),
-                marker=dict(size=5, symbol='square', opacity=0.5, color=hexcolors[k]),
-#               marker=dict(size=5, symbol='square', opacity=0.5, color=hexcolors_mapped[k]),
-#               marker=dict(size=5, symbol='square', opacity=0.5, color = ts_yearly_normed[k], colorscale='RdBu_r'),                                
+                mode='lines', 
+#               mode='lines+markers', 
+#               line=dict(width=1.5),
+                line=dict(width=1, color=hexcolors[k]),
+#               marker=dict(size=3, symbol='square', opacity=1.0, color=hexcolors[k], line_width=1),                  
+#               marker=dict(size=3, symbol='square', opacity=0.5, color=hexcolors_mapped[k]),
+#               marker=dict(size=3, symbol='square', opacity=0.5, color = ts_yearly_normed[k], colorscale='RdBu_r'),                                
                 name=str(np.array(X)[k]),
+                showlegend=False,
                 )
             ]
             data = data + trace
+
+    trace_median=[go.Scatter(                      
+        x=np.arange(1,13), y=df['normal'], mode='lines', 
+        line=dict(width=3, color='white'),
+        name='1961-1990 normal')]
+    data = data + trace_median
+    trace_latest=[go.Scatter(                      
+        x=np.arange(1,13), y=np.array(Y)[n-1,:], 
+        mode='lines+markers', 
+        line=dict(width=3, color=hexcolors[n-1]),
+        marker=dict(size=7, symbol='square', opacity=1.0, color='orange', line_width=1, line_color='black'),                  
+        name=str(np.array(X)[n-1]),
+        showlegend=True),
+    ]
+    data = data + trace_latest
 
     fig = go.Figure(data)
     fig.update_layout(
