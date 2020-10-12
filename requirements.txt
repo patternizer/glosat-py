@@ -13,4 +13,5 @@ numpy==1.19.1
 pandas==1.1.0
 pickleshare==0.7.5
 plotly==4.9.0
+scipy==1.4.1
 xarray==0.16.0
