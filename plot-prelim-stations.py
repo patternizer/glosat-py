@@ -4,8 +4,8 @@
 #------------------------------------------------------------------------------
 # PROGRAM: plot-prelim-stations.py
 #------------------------------------------------------------------------------
-# Version 0.16
-# 9 October, 2020
+# Version 0.17
+# 15 October, 2020
 # Michael Taylor
 # https://patternizer.github.io
 # patternizer AT gmail DOT com
@@ -80,11 +80,12 @@ load_df_temp = True
 load_df_anom = True
 load_df_norm = True
 load_df_normals = True
+plot_rank = True
 plot_fry = False
 plot_spiral = False
 plot_stripes = False
 plot_klib = False
-plot_temporal_change = True
+plot_temporal_change = False
 plot_temporal_coverage = False
 plot_spatial_coverage = False
 plot_seasonal_anomalies = False
@@ -524,6 +525,61 @@ else:
 #df_norm = df_norm_copy
 #df_norm.to_pickle('df_norm.pkl', compression='bz2')
 
+#------------------------------------------------------------------------------
+# PLOT ANOMALY RANK DISTRIBUTION
+#------------------------------------------------------------------------------
+
+if plot_rank == True:
+
+    print('plot_rank ...')
+    
+    ds = df_anom.copy()
+    
+    value = np.where(df_anom['stationcode'].unique()=='010010')[0][0] # Jan Mayen        
+#   value = np.where(df_anom['stationcode'].unique()=='545110')[0][0] # Beijing
+#   value = np.where(df_anom['stationcode'].unique()=='037401')[0][0] # Had-CET        
+    stationcode = ds[ds['stationcode']==ds['stationcode'].unique()[value]]['stationcode'].unique()[0]
+    stationname = ds[ds['stationcode']==ds['stationcode'].unique()[value]]['stationname'].unique()[0]
+    
+    da = ds[ds['stationcode']==ds['stationcode'].unique()[value]].iloc[:,range(0,13)]
+            
+    ts_yearly = np.mean(np.array(da.groupby('year').mean().iloc[:,0:12]),axis=1) 
+    ts_yearly_sd = np.std(np.array(da.groupby('year').mean().iloc[:,0:12]),axis=1)                    
+    ts_yearly_min = np.nanmin(np.array(da.groupby('year').mean().iloc[:,0:12]),axis=1)                    
+    ts_yearly_max = np.nanmax(np.array(da.groupby('year').mean().iloc[:,0:12]),axis=1)                    
+    t_yearly = xr.cftime_range(start=str(da['year'].iloc[0]), periods=len(ts_yearly), freq='A', calendar='noleap')   
+
+    df = pd.DataFrame({'t_yearly':t_yearly, 'ts_yearly':ts_yearly, 'ts_yearly_sd':ts_yearly_sd, 'ts_yearly_min':ts_yearly_min, 'ts_yearly_max':ts_yearly_max})
+    df_sorted = df.sort_values('ts_yearly',ascending=False)
+    dates_ranked = [ str(df_sorted['t_yearly'][df_sorted.index[i]].year) for i in range(len(df_sorted)) ]
+
+    x = range(len(t_yearly))     
+    y = df_sorted['ts_yearly']
+    e = df_sorted['ts_yearly_sd']
+    ymin = df_sorted['ts_yearly_min']
+    ymax = df_sorted['ts_yearly_max']
+        
+    fig,ax = plt.subplots(figsize=(15,10))    
+    plt.bar(x=x, height=2*e, bottom=y-e, alpha=0.2, label=r'Ranked mean annual anomaly $\pm$1 SD')
+#   plt.fill_between(x,y-e,y+e, alpha=0.2)
+    plt.step(x,y,where='mid', label='Ranked mean annual anomaly')
+    plt.step(x,y-e,where='mid')
+    plt.step(x,y+e,where='mid')
+#   plt.scatter(x,ymin,'.')
+#   plt.scatter(x,ymax,'.')
+    ax.set_xticks(x) # set number of ticks
+#   ax.set_xticklabels([])
+    ax.set_xticklabels(dates_ranked, rotation='vertical', size='small') # tick labels
+    plt.tick_params(axis='y', which='major', labelsize=fontsize)      
+    for i, v in enumerate(y):
+        ax.text(i-0.4, v+0.2, dates_ranked[i], color='black', rotation='vertical', size='small')    
+#   fig.autofmt_xdate()
+    plt.xlim(-1,len(x))
+    plt.legend(loc='lower left', fontsize=12)
+    plt.ylabel('Annual temperature aomaly, [K]', fontsize=fontsize)
+    plt.title(stationname, fontsize=fontsize)
+    plt.savefig('rank_anomaly_'+stationcode+'.png')
+    
 #------------------------------------------------------------------------------
 # REPLACE FRY FillValue WITH FIRSTYEAR
 #------------------------------------------------------------------------------
