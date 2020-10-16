@@ -3,8 +3,8 @@
 #------------------------------------------------------------------------------
 # PROGRAM: app.py
 #------------------------------------------------------------------------------
-# Version 0.12
-# 12 October, 2020
+# Version 0.13
+# 15 October, 2020
 # Michael Taylor
 # https://patternizer.github.io
 # patternizer AT gmail DOT com
@@ -263,6 +263,13 @@ app.layout = html.Div(children=[
     html.Div([
         dbc.Row([
             # ------------
+            dbc.Col(html.Div([
+#               dcc.Graph(id="plot-spiral", style = {'padding' : '10px', 'width': '100%', 'display': 'inline-block'}),                                 
+                dcc.Graph(id="plot-ranks", style = {'padding' : '10px', 'width': '100%', 'display': 'inline-block'}),                                 
+            ]), 
+            width={'size':6}, 
+            ),
+            # ------------           
             dbc.Col(html.Div([     
 
                 html.Br(),
@@ -275,12 +282,7 @@ app.layout = html.Div(children=[
             style = {'padding' : '10px', 'width': '100%', 'display': 'inline-block'}),    
             width={'size':6}, 
             ),
-
-            dbc.Col(html.Div([
-#                dcc.Graph(id="plot-spiral", style = {'padding' : '10px', 'width': '100%', 'display': 'inline-block'}),                                 
-            ]), 
-            width={'size':6}, 
-            ),            
+            # ------------           
         ]),
     ]),
 # ------------
@@ -356,16 +358,19 @@ def update_plot_worldmap(value):
     lon = [df_temp[df_temp['stationcode']==df_temp['stationcode'].unique()[value]]['stationlon'].iloc[0]]
     station = df_temp[df_temp['stationcode']==df_temp['stationcode'].unique()[value]]['stationcode'].iloc[0]
     
-    fig = go.Figure(px.scatter_mapbox(lat=lat, lon=lon, color_discrete_sequence=["darkred"], zoom=1))
+    fig = go.Figure(
+        px.scatter_mapbox(lat=lat, lon=lon, color_discrete_sequence=["darkred"], zoom=1))
     fig.update_layout(
         template = "plotly_dark",
 #       template = None,
+        xaxis_title = {'text': 'Longitude, °E'},
+        yaxis_title = {'text': 'Latitude, °N'},
     )
     fig.update_layout(mapbox_style="carto-positron", mapbox_center_lat=lat[0], mapbox_center_lon=lon[0]) 
 #   fig.update_layout(mapbox_style="stamen-watercolor", mapbox_center_lat=lat, mapbox_center_lon=lon) 
 #   fig.update_layout(mapbox_style="stamen-terrain", mapbox_center_lat=lat[0], mapbox_center_lon=lon 
-#   fig.update_layout(title={'text': 'Location', 'x':0.5, 'y':0.925, 'xanchor': 'center', 'yanchor': 'top'})
-    fig.update_layout(height=300, width=600, margin={"r":80,"t":10,"l":50,"b":60})
+#   fig.update_layout(title={'text': 'Location', 'x':0.5, 'y':0.925, 'xanchor': 'center', 'yanchor': 'top'})    
+    fig.update_layout(height=300, width=600, margin={"r":50,"t":10,"l":50,"b":60})
     
     return fig
 
@@ -440,7 +445,14 @@ def update_plot_stripes(value,trim):
         showlegend = True,    
     )
     fig.update_yaxes(showticklabels = False) # hide all the xticks        
-    fig.update_layout(height=300, width=700, margin={"r":10,"t":10,"l":50,"b":10})    
+    fig.update_layout(legend=dict(
+        orientation='v',
+        yanchor="top",
+        y=0.3,
+        xanchor="left",
+        x=0.8),
+    )
+    fig.update_layout(height=300, width=600, margin={"r":10,"t":10,"l":50,"b":10})    
     
     return fig
 
@@ -520,9 +532,16 @@ def update_plot_timeseries(value,trim):
 #       template = None,
         xaxis = dict(range=[t_yearly[0],t_yearly[-1]]),       
         xaxis_title = {'text': 'Year'},
-        yaxis_title = {'text': 'Temperature anomaly, °C'},
+        yaxis_title = {'text': 'Anomaly (from 1961-1990), °C'},
     )
-    fig.update_layout(height=300, width=700, margin={"r":10,"t":10,"l":10,"b":10})    
+    fig.update_layout(legend=dict(
+        orientation='v',
+        yanchor="top",
+        y=0.3,
+        xanchor="left",
+        x=0.8),
+    )
+    fig.update_layout(height=300, width=600, margin={"r":10,"t":10,"l":70,"b":10})    
 
     return fig
 
@@ -694,7 +713,7 @@ def update_plot_climatology(value,trim):
         xaxis_title = {'text': 'Month'},
         yaxis_title = {'text': 'Monthly temperature, °C'},
     )
-    fig.update_layout(height=300, width=600, margin={"r":10,"t":10,"l":10,"b":10})
+    fig.update_layout(height=300, width=600, margin={"r":10,"t":10,"l":70,"b":10})
     
     return fig
 
@@ -791,8 +810,113 @@ def update_plot_spiral(value,trim):
         ),
 #       annotations=[dict(x=0, y=0, text=str(da.iloc[0][0].astype('int')))],        
     )
-    fig.update_layout(height=300, width=600, margin={"r":80,"t":50,"l":50,"b":60})
+    fig.update_layout(height=300, width=600, margin={"r":80,"t":50,"l":70,"b":60})
     
+    return fig
+
+@app.callback(
+    Output(component_id='plot-ranks', component_property='figure'),
+    [Input(component_id='station', component_property='value'),
+    Input(component_id='radio-fry', component_property='value')],              
+    )
+
+def update_plot_ranks(value,trim):
+    
+    """
+    Plot station year rank anomaly distribution
+    """
+
+    # find drop-down index for Beijing
+    # value = np.where(df_temp['stationcode'].unique()=='545110')[0][0]
+
+    if trim == 'On':
+        fry = df_anom[df_anom['stationcode']==df_anom['stationcode'].unique()[value]]['stationfirstreliable'].unique()
+        da = df_anom[ (df_anom['year']>=fry[0]) & (df_anom['stationcode']==df_anom['stationcode'].unique()[value]) ].iloc[:,range(0,13)]
+    elif trim == 'Off':   
+        da = df_anom[df_anom['stationcode']==df_anom['stationcode'].unique()[value]].iloc[:,range(0,13)]
+    
+    # Climate Stripes Colourmap
+
+    ts_yearly = np.mean(np.array(da.groupby('year').mean().iloc[:,0:12]),axis=1) 
+    ts_yearly_sd = np.std(np.array(da.groupby('year').mean().iloc[:,0:12]),axis=1)                    
+    # Solve Y1677-Y2262 Pandas bug with Xarray:       
+    # t_yearly = pd.date_range(start=str(da['year'].iloc[0]), periods=len(ts_yearly), freq='A')   
+    t_yearly = xr.cftime_range(start=str(da['year'].iloc[0]), periods=len(ts_yearly), freq='A', calendar='noleap')   
+
+    # Climate Stripes Colourmap
+
+#    mask = np.isfinite(ts_yearly)
+#    ts_yearly_min = ts_yearly[mask].min()    
+#    ts_yearly_max = ts_yearly[mask].max()    
+#    ts_yearly_ptp = ts_yearly[mask].ptp()
+#    ts_yearly_normed = ((ts_yearly[mask] - ts_yearly_min) / ts_yearly_ptp)             
+#    ts_yearly = ts_yearly[mask]
+#    ts_yearly_sd = ts_yearly_sd[mask]
+#    t_yearly = da['year'][mask]    
+
+    # Add miniscule (1e-6) white noise to fix duplicates in colour mapping
+
+#    n = np.isfinite(ts_yearly).sum()
+#    noise = np.random.normal(0,1,n)/1e6
+#    ts_yearly_normed_whitened = ts_yearly_normed + noise
+
+#    colors = cmocean.cm.balance(np.linspace(0.05,0.95,n)) 
+#    hexcolors = [ "#{:02x}{:02x}{:02x}".format(int(colors[i][0]*255),int(colors[i][1]*255),int(colors[i][2]*255)) for i in range(len(colors)) ]
+#    mapidx = ts_yearly_normed_whitened.argsort()
+#    hexcolors_mapped = [ hexcolors[mapidx[i]] for i in range(len(mapidx)) ]
+
+    # Calculate rank yearly anomaly distribution and re-order labels
+    
+    df = pd.DataFrame({'t_yearly':t_yearly, 'ts_yearly':ts_yearly, 'ts_yearly_sd':ts_yearly_sd})
+    df_sorted = df.sort_values('ts_yearly',ascending=False)
+    dates_ranked = [ str(df_sorted['t_yearly'][df_sorted.index[i]]) for i in range(len(df_sorted)) ]
+    x = np.arange(len(t_yearly))     
+    y = df_sorted['ts_yearly']
+    e = df_sorted['ts_yearly_sd']
+
+    # Climate Stripes Colourmap
+
+    mask = np.isfinite(y)
+    ts_yearly_min = np.array(y[mask]).min()    
+    ts_yearly_max = np.array(y[mask]).max()    
+    ts_yearly_ptp = np.array(y[mask]).ptp()
+    ts_yearly_normed = ((y[mask] - ts_yearly_min) / ts_yearly_ptp)             
+#    ts_yearly = ts_yearly[mask]
+#    ts_yearly_sd = ts_yearly_sd[mask]
+#    t_yearly = da['year'][mask]    
+    
+    data=[
+        go.Bar(y=2*e, x=dates_ranked, base=y-e,
+        marker = dict(color = ts_yearly_normed, colorscale='RdBu_r', line_width=0),  
+        name = 'Yearly SD',  
+        ),
+        go.Scatter(                      
+        x=dates_ranked, y=y, 
+        mode='lines+markers', 
+        line=dict(width=1, color='black'),
+        marker=dict(size=2, symbol='square', opacity=1.0, color=ts_yearly_normed, colorscale='RdBu_r', line_width=1, line_color='black'),                  
+        name='Yearly mean',
+        )
+    ]
+                                      
+    fig = go.Figure(data)
+    fig.update_layout(
+        template = "plotly_dark",
+#       template = None,
+        xaxis=dict(title='Rank', type='category'),         
+        yaxis_title = {'text': 'Anomaly (from 1961-1990), °C'},
+    )
+    fig.update_xaxes(showticklabels = False) # hide all the xticks        
+    fig.update_layout(legend=dict(
+        orientation='v',
+        yanchor="top",
+        y=0.3,
+        xanchor="left",
+        x=0.1),
+    )
+    fig.update_layout(height=300, width=600, margin={"r":10,"t":10,"l":70,"b":10})    
+
+
     return fig
 
 ##################################################################################################
