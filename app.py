@@ -468,6 +468,9 @@ def update_plot_timeseries(value,trim):
     Plot station timeseries
     """
 
+    # value = np.where(df_temp['stationcode'].unique()=='545110')[0][0] # Beijing
+    # value = np.where(df_anom['stationcode'].unique()=='024580')[0][0] # Uppsala-Flygplats
+
     if trim == 'On':
         fry = df_anom[df_anom['stationcode']==df_anom['stationcode'].unique()[value]]['stationfirstreliable'].unique()
         da = df_anom[ (df_anom['year']>=fry[0]) & (df_anom['stationcode']==df_anom['stationcode'].unique()[value]) ].iloc[:,range(0,13)]
@@ -498,12 +501,39 @@ def update_plot_timeseries(value,trim):
 
     n = len(ts_yearly)            
     mask = np.isfinite(ts_yearly)
-    ts_yearly_min = ts_yearly[mask].min()    
-    ts_yearly_max = ts_yearly[mask].max()    
-    ts_yearly_ptp = ts_yearly[mask].ptp()
-    ts_yearly_normed = ((ts_yearly - ts_yearly_min) / ts_yearly_ptp)             
+    if mask.sum() == 0:
+        ts_yearly_normed = np.ones(n)*np.nan
 
-    data=[
+        data=[
+            go.Scatter(x=t_monthly, y=[], 
+                mode='lines+markers', 
+                legendgroup="a",
+                line=dict(width=1.0, color='lightgrey'),
+                marker=dict(size=5, opacity=0.5, color='grey'),
+                name='Monthly',
+                yaxis='y1',
+                error_y=dict(
+                    type='constant',
+                    array=[],
+                    visible=False),
+            ),
+            go.Scatter(x=t_yearly, y=[], 
+                mode='lines+markers', 
+                legendgroup="a",
+                line=dict(width=1.0, color='black'),
+                marker=dict(size=7, symbol='square', opacity=1.0, color = ts_yearly_normed, colorscale='RdBu_r', line_width=1),                  
+                name='Yearly',
+                yaxis='y1',
+            )
+        ]   
+        
+    else:        
+        ts_yearly_min = ts_yearly[mask].min()    
+        ts_yearly_max = ts_yearly[mask].max()    
+        ts_yearly_ptp = ts_yearly[mask].ptp()
+        ts_yearly_normed = ((ts_yearly - ts_yearly_min) / ts_yearly_ptp)             
+
+        data=[
             go.Scatter(x=t_monthly, y=ts_monthly, 
                 mode='lines+markers', 
                 legendgroup="a",
@@ -524,7 +554,7 @@ def update_plot_timeseries(value,trim):
                 name='Yearly',
                 yaxis='y1',
             )
-    ]   
+        ]   
                                       
     fig = go.Figure(data)
     fig.update_layout(
@@ -534,13 +564,32 @@ def update_plot_timeseries(value,trim):
         xaxis_title = {'text': 'Year'},
         yaxis_title = {'text': 'Anomaly (from 1961-1990), °C'},
     )
+
+    if mask.sum() == 0:
+        fig.update_layout(
+            annotations=[
+                dict(
+                    x=t_yearly[np.floor(len(t_yearly)/2).astype(int)],
+                    y=0,
+                    xref="x",
+                    yref="y",
+                    text="No anomaly baseline",
+                    showarrow=False,
+                    font=dict(
+                        family="Courier New, monospace",
+                        size=16,
+                        color="#ffffff"
+                        ),                    
+                )
+            ]
+        )    
     fig.update_layout(legend=dict(
         orientation='v',
         yanchor="top",
         y=0.3,
         xanchor="left",
         x=0.8),
-    )
+    )    
     fig.update_layout(height=300, width=600, margin={"r":10,"t":10,"l":70,"b":10})    
 
     return fig
@@ -826,19 +875,23 @@ def update_plot_ranks(value,trim):
     Plot station year rank anomaly distribution
     """
 
-    # find drop-down index for Beijing
-    # value = np.where(df_temp['stationcode'].unique()=='545110')[0][0]
-
+    # value = np.where(df_temp['stationcode'].unique()=='545110')[0][0] # Beijing
+    # value = np.where(df_anom['stationcode'].unique()=='024580')[0][0] # Uppsala-Flygplats
+    
     if trim == 'On':
         fry = df_anom[df_anom['stationcode']==df_anom['stationcode'].unique()[value]]['stationfirstreliable'].unique()
         da = df_anom[ (df_anom['year']>=fry[0]) & (df_anom['stationcode']==df_anom['stationcode'].unique()[value]) ].iloc[:,range(0,13)]
     elif trim == 'Off':   
         da = df_anom[df_anom['stationcode']==df_anom['stationcode'].unique()[value]].iloc[:,range(0,13)]
-    
+#       da = df_temp[df_temp['stationcode']==df_temp['stationcode'].unique()[value]].iloc[:,range(0,13)]
+
     # Climate Stripes Colourmap
 
     ts_yearly = np.mean(np.array(da.groupby('year').mean().iloc[:,0:12]),axis=1) 
-    ts_yearly_sd = np.std(np.array(da.groupby('year').mean().iloc[:,0:12]),axis=1)                    
+    ts_yearly_sd = np.std(np.array(da.groupby('year').mean().iloc[:,0:12]),axis=1) 
+    ts_yearly_Q1 = np.percentile(np.array(da.groupby('year').mean().iloc[:,0:12]),25, axis=1)         
+    ts_yearly_Q3 = np.percentile(np.array(da.groupby('year').mean().iloc[:,0:12]),75, axis=1)         
+    ts_yearly_iqr = ts_yearly_Q3-ts_yearly_Q1                    
     # Solve Y1677-Y2262 Pandas bug with Xarray:       
     # t_yearly = pd.date_range(start=str(da['year'].iloc[0]), periods=len(ts_yearly), freq='A')   
     t_yearly = xr.cftime_range(start=str(da['year'].iloc[0]), periods=len(ts_yearly), freq='A', calendar='noleap')   
@@ -867,37 +920,55 @@ def update_plot_ranks(value,trim):
 
     # Calculate rank yearly anomaly distribution and re-order labels
     
-    df = pd.DataFrame({'t_yearly':t_yearly, 'ts_yearly':ts_yearly, 'ts_yearly_sd':ts_yearly_sd})
+#   df = pd.DataFrame({'t_yearly':t_yearly, 'ts_yearly':ts_yearly, 'ts_yearly_sd':ts_yearly_sd})
+    df = pd.DataFrame({'t_yearly':t_yearly, 'ts_yearly':ts_yearly, 'ts_yearly_sd':ts_yearly_sd, 'ts_yearly_Q1':ts_yearly_Q1, 'ts_yearly_Q3':ts_yearly_Q3, 'ts_yearly_iqr':ts_yearly_iqr})
     df_sorted = df.sort_values('ts_yearly',ascending=False)
     dates_ranked = [ str(df_sorted['t_yearly'][df_sorted.index[i]]) for i in range(len(df_sorted)) ]
     x = np.arange(len(t_yearly))     
     y = df_sorted['ts_yearly']
     e = df_sorted['ts_yearly_sd']
+    e_Q1 = df_sorted['ts_yearly_Q1']
+    e_Q3 = df_sorted['ts_yearly_Q3']
+    e_iqr = df_sorted['ts_yearly_iqr']
 
     # Climate Stripes Colourmap
 
     mask = np.isfinite(y)
-    ts_yearly_min = np.array(y[mask]).min()    
-    ts_yearly_max = np.array(y[mask]).max()    
-    ts_yearly_ptp = np.array(y[mask]).ptp()
-    ts_yearly_normed = ((y[mask] - ts_yearly_min) / ts_yearly_ptp)             
-#    ts_yearly = ts_yearly[mask]
-#    ts_yearly_sd = ts_yearly_sd[mask]
-#    t_yearly = da['year'][mask]    
+    if mask.sum() == 0: # --> no baseline --> no amonalies
+        ts_yearly_normed = np.ones(len(y))*np.nan
+        data=[
+            go.Bar(y=[], x=dates_ranked, base=[],
+                   marker = dict(color = ts_yearly_normed, colorscale='RdBu_r', line_width=0),  
+                   name = 'Yearly SD',  
+            ),
+            go.Scatter(                      
+                x=dates_ranked, y=[], 
+                mode='lines+markers', 
+                line=dict(width=1, color='black'),
+                marker=dict(size=2, symbol='square', opacity=1.0, color=ts_yearly_normed, colorscale='RdBu_r', line_width=1, line_color='black'),                  
+                name='Yearly mean',
+            )
+        ]
+    else:
+        ts_yearly_min = np.array(y[mask]).min()    
+        ts_yearly_max = np.array(y[mask]).max()    
+        ts_yearly_ptp = np.array(y[mask]).ptp()
+        ts_yearly_normed = ((y[mask] - ts_yearly_min) / ts_yearly_ptp)             
     
-    data=[
-        go.Bar(y=2*e, x=dates_ranked, base=y-e,
-        marker = dict(color = ts_yearly_normed, colorscale='RdBu_r', line_width=0),  
-        name = 'Yearly SD',  
-        ),
-        go.Scatter(                      
-        x=dates_ranked, y=y, 
-        mode='lines+markers', 
-        line=dict(width=1, color='black'),
-        marker=dict(size=2, symbol='square', opacity=1.0, color=ts_yearly_normed, colorscale='RdBu_r', line_width=1, line_color='black'),                  
-        name='Yearly mean',
-        )
-    ]
+        data=[
+            go.Bar(y=2*e, x=dates_ranked, base=y-e,
+    #       go.Bar(y=e_iqr, x=dates_ranked, base=e_Q1,
+                   marker = dict(color = ts_yearly_normed, colorscale='RdBu_r', line_width=0),  
+                   name = 'Yearly SD',  
+            ),
+            go.Scatter(                      
+                x=dates_ranked, y=y, 
+                mode='lines+markers', 
+                line=dict(width=1, color='black'),
+                marker=dict(size=2, symbol='square', opacity=1.0, color=ts_yearly_normed, colorscale='RdBu_r', line_width=1, line_color='black'),                  
+                name='Yearly mean',
+            )
+        ]
                                       
     fig = go.Figure(data)
     fig.update_layout(
@@ -914,8 +985,25 @@ def update_plot_ranks(value,trim):
         xanchor="left",
         x=0.1),
     )
+    if mask.sum() == 0:
+        fig.update_layout(
+            annotations=[
+                dict(
+                    x=t_yearly[np.floor(len(t_yearly)/2).astype(int)],
+                    y=0,
+                    xref="x",
+                    yref="y",
+                    text="No anomaly baseline",
+                    showarrow=False,
+                    font=dict(
+                        family="Courier New, monospace",
+                        size=16,
+                        color="#ffffff"
+                        ),                    
+                )
+            ]
+        )        
     fig.update_layout(height=300, width=600, margin={"r":10,"t":10,"l":70,"b":10})    
-
 
     return fig
 
