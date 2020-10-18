@@ -387,6 +387,9 @@ def update_plot_stripes(value,trim):
     https://showyourstripes.info/
     """
 
+    # value = np.where(df_temp['stationcode'].unique()=='545110')[0][0] # Beijing
+    # value = np.where(df_anom['stationcode'].unique()=='024580')[0][0] # Uppsala-Flygplats
+
     if trim == 'On':
         fry = df_temp[df_temp['stationcode']==df_temp['stationcode'].unique()[value]]['stationfirstreliable'].unique()
         da = df_temp[ (df_temp['year']>=fry[0]) & (df_temp['stationcode']==df_temp['stationcode'].unique()[value]) ].iloc[:,range(0,13)]
@@ -394,6 +397,7 @@ def update_plot_stripes(value,trim):
         da = df_temp[df_temp['stationcode']==df_temp['stationcode'].unique()[value]].iloc[:,range(0,13)]
 
     ts_yearly = np.mean(np.array(da.groupby('year').mean().iloc[:,0:12]),axis=1) 
+#   ts_yearly = np.nanmean(np.array(da.groupby('year').mean().iloc[:,0:12]),axis=1) 
     # Solve Y1677-Y2262 Pandas bug with Xarray:        
     # t_yearly = pd.date_range(start=str(da['year'].iloc[0]), periods=len(ts_yearly), freq='A')   
     t_yearly = xr.cftime_range(start=str(da['year'].iloc[0]), periods=len(ts_yearly), freq='A', calendar='noleap')     
@@ -408,6 +412,22 @@ def update_plot_stripes(value,trim):
     ts_yearly_ptp = ts_yearly[mask].ptp()
     ts_yearly_normed = ((ts_yearly - ts_yearly_min) / ts_yearly_ptp)             
     ts_ones = np.full(n,1)
+
+    # TEST: df_temp ts_yearly_normed versus df_anom ts_yearly_normed
+    
+#    da2 = df_anom[df_anom['stationcode']==df_anom['stationcode'].unique()[value]].iloc[:,range(0,13)]
+#    ts_yearly2 = np.mean(np.array(da2.groupby('year').mean().iloc[:,0:12]),axis=1)
+#    mask2 = np.isfinite(ts_yearly2)
+#    ts_yearly_min2 = ts_yearly2[mask].min()    
+#    ts_yearly_max2 = ts_yearly2[mask].max()    
+#    ts_yearly_ptp2 = ts_yearly2[mask].ptp()
+#    ts_yearly_normed2 = ((ts_yearly2 - ts_yearly_min2) / ts_yearly_ptp2)             
+
+#    plt.plot(t_yearly,ts_yearly)
+#    plt.plot(t_yearly,ts_yearly2)
+#    plt.plot(t_yearly,ts_yearly_normed)
+#    plt.scatter(x=np.array(t_yearly),y=ts_yearly_normed2,marker='.', color='orange')
+
     #--------------------------------------------------------------------------
         
     data=[
@@ -489,17 +509,18 @@ def update_plot_timeseries(value,trim):
 
     ts_yearly = np.mean(np.array(da.groupby('year').mean().iloc[:,0:12]),axis=1) 
     ts_yearly_sd = np.std(np.array(da.groupby('year').mean().iloc[:,0:12]),axis=1)                    
+#   ts_yearly = np.nanmean(np.array(da.groupby('year').mean().iloc[:,0:12]),axis=1) 
+#   ts_yearly_sd = np.nanstd(np.array(da.groupby('year').mean().iloc[:,0:12]),axis=1)                    
     # Solve Y1677-Y2262 Pandas bug with Xarray:       
     # t_yearly = pd.date_range(start=str(da['year'].iloc[0]), periods=len(ts_yearly), freq='A')   
     t_yearly = xr.cftime_range(start=str(da['year'].iloc[0]), periods=len(ts_yearly), freq='A', calendar='noleap')   
 
-    n = len(t_yearly)
+    n = len(ts_yearly)
     colors = cmocean.cm.balance(np.linspace(0.05,0.95,n)) 
     hexcolors = [ "#{:02x}{:02x}{:02x}".format(int(colors[i][0]*255),int(colors[i][1]*255),int(colors[i][2]*255)) for i in range(len(colors)) ]
 
     # Climate Stripes Colourmap
 
-    n = len(ts_yearly)            
     mask = np.isfinite(ts_yearly)
     if mask.sum() == 0:
         ts_yearly_normed = np.ones(n)*np.nan
@@ -573,7 +594,7 @@ def update_plot_timeseries(value,trim):
                     y=0,
                     xref="x",
                     yref="y",
-                    text="No anomaly baseline",
+                    text="No baseline anomaly",
                     showarrow=False,
                     font=dict(
                         family="Courier New, monospace",
@@ -621,6 +642,7 @@ def update_plot_climatology(value,trim):
     # Climate Stripes Colourmap
 
     ts_yearly = np.mean(np.array(da.groupby('year').mean().iloc[:,0:12]),axis=1) 
+#   ts_yearly = np.nanmean(np.array(da.groupby('year').mean().iloc[:,0:12]),axis=1) 
     # Solve Y1677-Y2262 Pandas bug with Xarray:       
     # t_yearly = pd.date_range(start=str(da['year'].iloc[0]), periods=len(ts_yearly), freq='A')   
     t_yearly = xr.cftime_range(start=str(da['year'].iloc[0]), periods=len(ts_yearly), freq='A', calendar='noleap')   
@@ -993,7 +1015,7 @@ def update_plot_ranks(value,trim):
                     y=0,
                     xref="x",
                     yref="y",
-                    text="No anomaly baseline",
+                    text="No baseline anomaly",
                     showarrow=False,
                     font=dict(
                         family="Courier New, monospace",
