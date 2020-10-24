@@ -4,8 +4,8 @@
 #------------------------------------------------------------------------------
 # PROGRAM: plot-prelim-stations.py
 #------------------------------------------------------------------------------
-# Version 0.17
-# 15 October, 2020
+# Version 0.18
+# 23 October, 2020
 # Michael Taylor
 # https://patternizer.github.io
 # patternizer AT gmail DOT com
@@ -80,7 +80,7 @@ load_df_temp = True
 load_df_anom = True
 load_df_norm = True
 load_df_normals = True
-plot_rank = True
+plot_rank = False
 plot_fry = False
 plot_spiral = False
 plot_stripes = False
@@ -92,6 +92,7 @@ plot_seasonal_anomalies = False
 plot_station_timeseres = False
 plot_station_climatology = False
 plot_station_locations = False
+plot_station_locations_counts = True
 plot_delta_cc = False; delta_cc_20C = True    
 plot_gap_analysis = False; station_count = True
 
@@ -2073,6 +2074,106 @@ if plot_station_locations == True:
                 color="maroon", s=1, alpha=0.5,
                 transform=ccrs.PlateCarree()) 
     plt.title(titlestr, fontsize=fontsize)
+    plt.savefig(figstr)
+    plt.close('all')
+
+if plot_station_locations_counts == True:
+    
+    #------------------------------------------------------------------------------
+    # PLOT: stations on world map coloured by number of months
+    #------------------------------------------------------------------------------
+
+    print('plot_station_locations_counts ...')
+
+    ds = df_temp.copy()
+
+#   lon = ds['stationlon']
+#   lat = ds['stationlat']
+    lon = ds.groupby('stationcode').mean()['stationlon']
+    lat = ds.groupby('stationcode').mean()['stationlat']
+
+#   dt = np.sum(ds.groupby(['stationcode','year']).count().iloc[:,0:12],axis=1)
+#    dt = ds.groupby(['stationcode','year']).count().iloc[:,0:12]
+
+    stationmonths=[]
+    for i in range(12):
+        months = np.array(ds.groupby(['stationcode'])[str(i+1)].count())
+        stationmonths.append(months)
+    stationmonths = np.nansum(stationmonths,axis=0)
+#   plt.plot(ds['stationcode'].unique().astype('int'),stationmonths)    
+    
+#   v = np.log10(stationmonths)
+    v = stationmonths
+    x, y = np.meshgrid(lon, lat)
+    
+    vmin = np.min(v)
+    vmax = 3600
+#   vmax = np.max(v)
+#   vmin = np.percentile(v,25)
+#   vmax = np.percentile(v,75)
+    
+    figstr = 'location_map_counts.png'
+    titlestr = 'GloSATp02: station months'
+#   colorbarstr = 'Station months (log10-scale)'
+    colorbarstr = 'Station months'
+    cmap = 'plasma'
+
+    fig  = plt.figure(figsize=(15,10))
+    projection = 'platecarree'    
+    if projection == 'platecarree': p = ccrs.PlateCarree(central_longitude=0); threshold = 0
+    if projection == 'mollweide': p = ccrs.Mollweide(central_longitude=0); threshold = 1e6
+    if projection == 'robinson': p = ccrs.Robinson(central_longitude=0); threshold = 0
+    if projection == 'equalearth': p = ccrs.EqualEarth(central_longitude=0); threshold = 0
+    if projection == 'geostationary': p = ccrs.Geostationary(central_longitude=0); threshold = 0
+    if projection == 'goodehomolosine': p = ccrs.InterruptedGoodeHomolosine(central_longitude=0); threshold = 0
+    if projection == 'europp': p = ccrs.EuroPP(); threshold = 0
+    if projection == 'northpolarstereo': p = ccrs.NorthPolarStereo(); threshold = 0
+    if projection == 'southpolarstereo': p = ccrs.SouthPolarStereo(); threshold = 0
+    if projection == 'lambertconformal': p = ccrs.LambertConformal(central_longitude=0); threshold = 0
+    ax = plt.axes(projection=p)
+    ax.set_global()
+#   ax.stock_img()
+#   ax.add_feature(cf.COASTLINE, edgecolor="lightblue")
+#   ax.add_feature(cf.BORDERS, edgecolor="lightblue")
+#   ax.coastlines(color='lightblue')
+    ax.coastlines()
+    ax.gridlines()    
+        
+    g = ccrs.Geodetic()
+    trans = ax.projection.transform_points(g, x, y)
+    x0 = trans[:,:,0]
+    x1 = trans[:,:,1]
+
+    if projection == 'platecarree':
+        ax.set_extent([-180, 180, -90, 90], crs=p)    
+        gl = ax.gridlines(crs=p, draw_labels=True, linewidth=1, color='black', alpha=0.5, linestyle='-')
+        gl.xlabels_top = False
+        gl.ylabels_right = False
+        gl.xlines = True
+        gl.ylines = True
+        gl.xlocator = mticker.FixedLocator([-180,-120,-60,0,60,120,180])
+        gl.ylocator = mticker.FixedLocator([-90,-60,-30,0,30,60,90])
+        gl.xformatter = LONGITUDE_FORMATTER
+        gl.yformatter = LATITUDE_FORMATTER
+        gl.xlabel_style = {'size': fontsize}
+        gl.ylabel_style = {'size': fontsize}
+        
+#        for mask in (x0>threshold,x0<=threshold):            
+#            im = ax.pcolor(ma.masked_where(mask, x), ma.masked_where(mask, y), ma.masked_where(mask, v), vmin=vmin, vmax=vmax, transform=ax.projection, cmap=cmap)
+#    else:
+#        for mask in (x0>threshold,x0<=threshold):
+#            im = ax.pcolor(ma.masked_where(mask, x0), ma.masked_where(mask, x1), ma.masked_where(mask, v), vmin=vmin, vmax=vmax, transform=ax.projection, cmap=cmap) 
+#    im.set_clim(vmin,vmax)
+       
+    ax.add_feature(cartopy.feature.OCEAN, zorder=100, edgecolor='k')
+    plt.scatter(x=lon, y=lat, 
+                c=v, s=5, alpha=0.5,
+                transform=ccrs.PlateCarree(), cmap=cmap) 
+    cb = plt.colorbar(orientation="horizontal", shrink=0.5, extend='both')
+#    cb = plt.colorbar(im, orientation="horizontal", shrink=0.5, extend='both')
+    cb.set_label(colorbarstr, labelpad=5, fontsize=fontsize)
+    cb.ax.tick_params(labelsize=fontsize)
+#   plt.title(titlestr, fontsize=fontsize)
     plt.savefig(figstr)
     plt.close('all')
         
