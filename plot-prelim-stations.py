@@ -4,8 +4,8 @@
 #------------------------------------------------------------------------------
 # PROGRAM: plot-prelim-stations.py
 #------------------------------------------------------------------------------
-# Version 0.18
-# 23 October, 2020
+# Version 0.19
+# 25 October, 2020
 # Michael Taylor
 # https://patternizer.github.io
 # patternizer AT gmail DOT com
@@ -17,6 +17,8 @@
 # Dataframe libraries:
 import numpy as np
 import numpy.ma as ma
+from scipy.interpolate import griddata
+from scipy import spatial
 from mod import Mod
 import itertools
 import pandas as pd
@@ -2087,13 +2089,11 @@ if plot_station_locations_counts == True:
 
     ds = df_temp.copy()
 
-#   lon = ds['stationlon']
-#   lat = ds['stationlat']
     lon = ds.groupby('stationcode').mean()['stationlon']
     lat = ds.groupby('stationcode').mean()['stationlat']
 
 #   dt = np.sum(ds.groupby(['stationcode','year']).count().iloc[:,0:12],axis=1)
-#    dt = ds.groupby(['stationcode','year']).count().iloc[:,0:12]
+#   dt = ds.groupby(['stationcode','year']).count().iloc[:,0:12]
 
     stationmonths=[]
     for i in range(12):
@@ -2102,24 +2102,26 @@ if plot_station_locations_counts == True:
     stationmonths = np.nansum(stationmonths,axis=0)
 #   plt.plot(ds['stationcode'].unique().astype('int'),stationmonths)    
     
-#   v = np.log10(stationmonths)
-    v = stationmonths
-    x, y = np.meshgrid(lon, lat)
-    
+    df = pd.DataFrame({'lon':lon, 'lat':lat, 'stationmonths':stationmonths})
+    dg = df[df['stationmonths']>0]
+        
+    v = np.log10(stationmonths)
+    v = dg['stationmonths']
+    x, y = np.meshgrid(dg['lon'], dg['lat'])    
+        
     vmin = np.min(v)
-    vmax = 3600
-#   vmax = np.max(v)
+    vmax = np.max(v)
 #   vmin = np.percentile(v,25)
 #   vmax = np.percentile(v,75)
     
     figstr = 'location_map_counts.png'
-    titlestr = 'GloSATp02: station months'
-#   colorbarstr = 'Station months (log10-scale)'
-    colorbarstr = 'Station months'
-    cmap = 'plasma'
+    titlestr = 'Number of months (1658-2020) with at least 1 observation'
+#   colorbarstr = 'Station months'
+    colorbarstr = ''
+    cmap = 'magma'
 
     fig  = plt.figure(figsize=(15,10))
-    projection = 'platecarree'    
+    projection = 'robinson'    
     if projection == 'platecarree': p = ccrs.PlateCarree(central_longitude=0); threshold = 0
     if projection == 'mollweide': p = ccrs.Mollweide(central_longitude=0); threshold = 1e6
     if projection == 'robinson': p = ccrs.Robinson(central_longitude=0); threshold = 0
@@ -2166,14 +2168,14 @@ if plot_station_locations_counts == True:
 #    im.set_clim(vmin,vmax)
        
     ax.add_feature(cartopy.feature.OCEAN, zorder=100, edgecolor='k')
-    plt.scatter(x=lon, y=lat, 
-                c=v, s=5, alpha=0.5,
+    plt.scatter(x=dg['lon'], y=dg['lat'], 
+                c=np.log10(dg['stationmonths']), s=1, alpha=1.0,
                 transform=ccrs.PlateCarree(), cmap=cmap) 
-    cb = plt.colorbar(orientation="horizontal", shrink=0.5, extend='both')
-#    cb = plt.colorbar(im, orientation="horizontal", shrink=0.5, extend='both')
-    cb.set_label(colorbarstr, labelpad=5, fontsize=fontsize)
+    cb = plt.colorbar(orientation="horizontal", shrink=0.5, pad=0.05, extend='max')    
+    cb.set_label(colorbarstr, labelpad=0, fontsize=fontsize)
+    cb.ax.set_xticklabels(['1','10','100','1000']) 
     cb.ax.tick_params(labelsize=fontsize)
-#   plt.title(titlestr, fontsize=fontsize)
+    plt.title(titlestr, fontsize=fontsize, pad=20)
     plt.savefig(figstr)
     plt.close('all')
         
