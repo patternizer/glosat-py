@@ -16,13 +16,14 @@ import dash_bootstrap_components as dbc
 from app import server
 from app import app
 # import all pages in the app
-from apps import glosat, home
+from apps import home, glosat, about
 
 # building the navigation bar
 # https://github.com/facultyai/dash-bootstrap-components/blob/master/examples/advanced-component-usage/Navbars.py
 dropdown = dbc.DropdownMenu(
     children=[
         dbc.DropdownMenuItem("Home", href="/home"),
+        dbc.DropdownMenuItem("About", href="/about"),
         dbc.DropdownMenuItem("App", href="/glosat"),
     ],
     nav = True,
@@ -66,7 +67,7 @@ def toggle_navbar_collapse(n, is_open):
         return not is_open
     return is_open
 
-for i in [2]:
+for i in [3]:
     app.callback(
         Output(f"navbar-collapse{i}", "is_open"),
         [Input(f"navbar-toggler{i}", "n_clicks")],
@@ -86,6 +87,8 @@ def display_page(pathname):
 
     if pathname == '/glosat':
         return glosat.layout
+    elif pathname == '/about':
+        return about.layout
     else:
         return home.layout
 
