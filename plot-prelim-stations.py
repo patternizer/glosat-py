@@ -23,7 +23,7 @@ from mod import Mod
 import itertools
 import pandas as pd
 import xarray as xr
-import klib
+#import klib
 import pickle
 from datetime import datetime
 import nc_time_axis
@@ -2121,7 +2121,7 @@ if plot_station_locations_counts == True:
     cmap = 'magma'
 
     fig  = plt.figure(figsize=(15,10))
-    projection = 'robinson'    
+    projection = 'winkeltripel'    
     if projection == 'platecarree': p = ccrs.PlateCarree(central_longitude=0); threshold = 0
     if projection == 'mollweide': p = ccrs.Mollweide(central_longitude=0); threshold = 1e6
     if projection == 'robinson': p = ccrs.Robinson(central_longitude=0); threshold = 0
@@ -2132,6 +2132,7 @@ if plot_station_locations_counts == True:
     if projection == 'northpolarstereo': p = ccrs.NorthPolarStereo(); threshold = 0
     if projection == 'southpolarstereo': p = ccrs.SouthPolarStereo(); threshold = 0
     if projection == 'lambertconformal': p = ccrs.LambertConformal(central_longitude=0); threshold = 0
+    if projection == 'winkeltripel': p = ccrs.WinkelTripel(central_longitude=0); threshold = 0
     ax = plt.axes(projection=p)
     ax.set_global()
 #   ax.stock_img()
@@ -2167,7 +2168,7 @@ if plot_station_locations_counts == True:
 #            im = ax.pcolor(ma.masked_where(mask, x0), ma.masked_where(mask, x1), ma.masked_where(mask, v), vmin=vmin, vmax=vmax, transform=ax.projection, cmap=cmap) 
 #    im.set_clim(vmin,vmax)
        
-    ax.add_feature(cartopy.feature.OCEAN, zorder=100, edgecolor='k')
+#   ax.add_feature(cartopy.feature.OCEAN, zorder=100, edgecolor='k')
     plt.scatter(x=dg['lon'], y=dg['lat'], 
                 c=np.log10(dg['stationmonths']), s=1, alpha=1.0,
                 transform=ccrs.PlateCarree(), cmap=cmap) 
