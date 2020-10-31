@@ -23,7 +23,7 @@ layout = html.Div([
             dbc.Card(
                 children=[
                     html.A(
-                    dbc.CardImg(src='assets/emily-stations-fry.png', top=False, style={'height':'70vh'}), href="/glosat", target='blank'), 
+                    dbc.CardImg(src='assets/emily-stations-fry.png', top=False, style={'height':'70vh'}), href="/glosat"), 
                     dbc.CardBody(
                         dbc.Button("Station Viewer App", href="/glosat", color="primary"), 
                         className="text-center",
