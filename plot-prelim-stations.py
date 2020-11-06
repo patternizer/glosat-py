@@ -78,10 +78,10 @@ lat_start = -90;  lat_end = 90
 lon_start = -180; lon_end = 180
 station_start=0;  station_end=10
 
-load_df_temp = True
+load_df_temp = True    
 load_df_anom = True
 load_df_norm = True
-load_df_normals = True
+load_df_normals = False
 plot_rank = False
 plot_fry = False
 plot_spiral = False
@@ -94,7 +94,7 @@ plot_seasonal_anomalies = False
 plot_station_timeseres = False
 plot_station_climatology = False
 plot_station_locations = False
-plot_station_locations_counts = True
+plot_station_locations_counts = False
 plot_delta_cc = False; delta_cc_20C = True    
 plot_gap_analysis = False; station_count = True
 
@@ -110,6 +110,7 @@ def load_dataframe(filename_txt):
 
     # load .txt file (comma separated) into pandas dataframe
 
+#    filename_txt = 'stat4.GloSATprelim03.1658-2020.txt'
 #    filename_txt = 'stat4.GloSATprelim02.1658-2020.txt'
 #    filename_txt = 'stat4.CRUTEM5.1prelim01.1721-2019.txt'    
 #    filename_txt = 'GloSATprelim01.1721-2019.txt'
@@ -294,9 +295,9 @@ if load_df_temp == True:
 
 else:    
     
-    print('read stat4.GloSATprelim02.1658-2020.txt ...')
+    print('read stat4.GloSATprelim03.1658-2020.txt ...')
 
-    filename_txt = 'stat4.GloSATprelim02.1658-2020.txt'
+    filename_txt = 'stat4.GloSATprelim03.1658-2020.txt'
     df = load_dataframe(filename_txt)
 
     #------------------------------------------------------------------------------
@@ -367,8 +368,12 @@ else:
 
     print('extracting normals ...')
 
-    file = 'normals5.GloSAT.prelim02_FRYuse_ocPLAUS1_iqr3.600reg0.3_19411990_MIN15_OCany_19611990_MIN15_PERDEC00_NManySDreq.txt'
+    file = 'normals5.GloSAT.prelim03_FRYuse_ocPLAUS1_iqr3.600reg0.3_19411990_MIN15_OCany_19611990_MIN15_PERDEC00_NManySDreq.txt'
+#    file = 'normals5.GloSAT.prelim02_FRYuse_ocPLAUS1_iqr3.600reg0.3_19411990_MIN15_OCany_19611990_MIN15_PERDEC00_NManySDreq.txt'
 #    file = 'normals5.GloSAT.prelim01_FRYuse_ocPLAUS1_iqr3.600reg0.3_19411990_MIN15_OCany_19611990_MIN15_PERDEC00_NManySDreq.txt'
+
+#    file = 'sd5.GloSAT.prelim03_FRYuse_ocPLAUS1_iqr3.600reg0.3_19411990_MIN15_OCany_19611990_MIN15_PERDEC00_NManySDreq.txt'
+#    file = 'sd5.GloSAT.prelim02_FRYuse_ocPLAUS1_iqr3.600reg0.3_19411990_MIN15_OCany_19611990_MIN15_PERDEC00_NManySDreq.txt'
 #    file = 'sd5.GloSAT.prelim01_FRYuse_ocPLAUS1_iqr3.600reg0.3_19411990_MIN15_OCany_19611990_MIN15_PERDEC00_NManySDreq.txt'
 
 #    1 ID
@@ -2121,7 +2126,7 @@ if plot_station_locations_counts == True:
     cmap = 'magma'
 
     fig  = plt.figure(figsize=(15,10))
-    projection = 'winkeltripel'    
+    projection = 'robinson'    
     if projection == 'platecarree': p = ccrs.PlateCarree(central_longitude=0); threshold = 0
     if projection == 'mollweide': p = ccrs.Mollweide(central_longitude=0); threshold = 1e6
     if projection == 'robinson': p = ccrs.Robinson(central_longitude=0); threshold = 0
