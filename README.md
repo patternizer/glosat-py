@@ -1,4 +1,4 @@
-![image](https://github.com/patternizer/budyko-calculation/blob/master/glosat-station-viewer-app.png)
+![image](https://github.com/patternizer/glosat-py/blob/master/glosat-station-viewer-app.png)
 
 # glosat-py
 
