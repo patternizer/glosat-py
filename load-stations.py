@@ -4,8 +4,8 @@
 #------------------------------------------------------------------------------
 # PROGRAM: load-stations.py
 #------------------------------------------------------------------------------
-# Version 0.3
-# 24 September, 2020
+# Version 0.4
+# 1 March, 2021
 # Michael Taylor
 # https://patternizer.github.io
 # patternizer AT gmail DOT com
@@ -16,17 +16,21 @@
 #------------------------------------------------------------------------------
 import numpy as np
 import pandas as pd
+import pickle
 
 # Silence library version notifications
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning)
+
 #------------------------------------------------------------------------------
 
 #------------------------------------------------------------------------------
 # SETTINGS: 
 #------------------------------------------------------------------------------
 
+filename_txt = 'stat4.GloSATprelim03.1658-2020.txt'
 load_df = False
+save_pkl = True
 
 #------------------------------------------------------------------------------
 # METHODS
@@ -186,7 +190,6 @@ if load_df == True:
 
 else:    
 
-    filename_txt = 'stat4.GloSATprelim02.1658-2020.txt'
     df = load_dataframe(filename_txt)
 
 #------------------------------------------------------------------------------
@@ -235,6 +238,7 @@ df['stationfirstreliable'] = df['stationfirstreliable'].astype('int16')
 #------------------------------------------------------------------------------
 
 df.to_csv('df.csv')
+df.to_pickle('df_temp.pkl', compression='bz2')
 
 #------------------------------------------------------------------------------
 print('** END')
