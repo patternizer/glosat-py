@@ -29,8 +29,9 @@ warnings.filterwarnings("ignore", category=UserWarning)
 #------------------------------------------------------------------------------
 
 filename_txt = 'stat4.GloSATprelim03.1658-2020.txt'
-load_df = False
-save_pkl = True
+load_df = True
+save_df = True
+use_pickle = True
 
 #------------------------------------------------------------------------------
 # METHODS
@@ -186,59 +187,66 @@ def load_dataframe(filename_txt):
 
 if load_df == True:
 
-    df = pd.read_csv('df.csv', index_col=0)
+    if use_pickle == True:
+        df = pd.read_pickle('df_temp.pkl', compression='bz2')    
+    else:
+        df = pd.read_csv('df_temp.csv', index_col=0)
 
 else:    
 
     df = load_dataframe(filename_txt)
 
-#------------------------------------------------------------------------------
-# ADD LEADING 0 TO STATION CODES (str)
-#------------------------------------------------------------------------------
+    #------------------------------------------------------------------------------
+    # ADD LEADING 0 TO STATION CODES (str)
+    #------------------------------------------------------------------------------
 
-df['stationcode'] = [ str(df['stationcode'][i]).zfill(6) for i in range(len(df)) ]
+    df['stationcode'] = [ str(df['stationcode'][i]).zfill(6) for i in range(len(df)) ]
 
-#------------------------------------------------------------------------------
-# APPLY SCALE FACTORS
-#------------------------------------------------------------------------------
+    #------------------------------------------------------------------------------
+    # APPLY SCALE FACTORS
+    #------------------------------------------------------------------------------
 
-df['stationlat'] = df['stationlat']/10.0
-df['stationlon'] = df['stationlon']/10.0
+    df['stationlat'] = df['stationlat']/10.0
+    df['stationlon'] = df['stationlon']/10.0
 
-for j in range(1,13):
+    for j in range(1,13):
 
-    df[df.columns[j]] = df[df.columns[j]]/10.0
+        df[df.columns[j]] = df[df.columns[j]]/10.0
 
-#------------------------------------------------------------------------------
-# CONVERT LONGITUDES FROM +W to +E
-#------------------------------------------------------------------------------
+    #------------------------------------------------------------------------------
+    # CONVERT LONGITUDES FROM +W to +E
+    #------------------------------------------------------------------------------
 
-df['stationlon'] = -df['stationlon']
+    df['stationlon'] = -df['stationlon']
 
-#------------------------------------------------------------------------------
-# CONVERT DTYPES FOR EFFICIENT STORAGE
-#------------------------------------------------------------------------------
+    #------------------------------------------------------------------------------
+    # CONVERT DTYPES FOR EFFICIENT STORAGE
+    #------------------------------------------------------------------------------
 
-df['year'] = df['year'].astype('int16')
+    df['year'] = df['year'].astype('int16')
 
-for j in range(1,13):
+    for j in range(1,13):
 
-    df[df.columns[j]] = df[df.columns[j]].astype('float32')
-    
-df['stationlat'] = df['stationlat'].astype('float32')
-df['stationlon'] = df['stationlon'].astype('float32')
-df['stationelevation'] = df['stationelevation'].astype('int16')
-df['stationfirstyear'] = df['stationfirstyear'].astype('int16')
-df['stationlastyear'] = df['stationlastyear'].astype('int16')
-df['stationsource'] = df['stationsource'].astype('int8')
-df['stationfirstreliable'] = df['stationfirstreliable'].astype('int16')
+        df[df.columns[j]] = df[df.columns[j]].astype('float32')
+        
+    df['stationlat'] = df['stationlat'].astype('float32')
+    df['stationlon'] = df['stationlon'].astype('float32')
+    df['stationelevation'] = df['stationelevation'].astype('int16')
+    df['stationfirstyear'] = df['stationfirstyear'].astype('int16')
+    df['stationlastyear'] = df['stationlastyear'].astype('int16')
+    df['stationsource'] = df['stationsource'].astype('int8')
+    df['stationfirstreliable'] = df['stationfirstreliable'].astype('int16')
 
 #------------------------------------------------------------------------------
 # SAVE SCALED DATAFRAME
 #------------------------------------------------------------------------------
 
-df.to_csv('df.csv')
-df.to_pickle('df_temp.pkl', compression='bz2')
+if save_df == True:
+
+    if use_pickle == True:
+        df.to_pickle('df_temp.pkl', compression='bz2')
+    else:
+        df.to_csv('df_temp.csv')
 
 #------------------------------------------------------------------------------
 print('** END')
