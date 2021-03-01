@@ -1,19 +1,22 @@
+![image](https://github.com/patternizer/budyko-calculation/blob/master/glosat-station-viewer-app.png)
+
 # glosat-py
 
-Experimental python dataviz tools for reading, plotting and inspecting GloSATp02 station data for [GloSAT](https://www.glosat.org):
+Experimental python dataviz tools for reading, plotting and inspecting GloSAT.p0x station data from the CRUTEM land surface air temperature releases for the [GloSAT Project](https://www.glosat.org):
 
-* python reader for GloSATp02 station database
-* plot GloSATp02 station level monthly timeseries
-* plot GloSATp02 station level monthly climatology
-* plot GloSATp02 station locations on world map
+* python reader for GloSAT.p0x station database
+* plot station level monthly timeseries
+* plot station level monthly climatology
+* plot station locations on world map
 * plot mean annual anomaly climate stripes (1900-2019) from 1961-1990 baseline
 * plot global mean annual anomaly maps
+* station inspector app
 
-[Plotly Python Reactive Dash app](https://patternizer-crutem5.herokuapp.com) for inspecting GloSATp02 station timeseries, monthly climatology and location. 
+[Plotly Python Reactive Dash app](https://glosat-py.herokuapp.com/) for inspecting GloSAT.p0x station timeseries, monthly climatology and location. 
 
 ## Contents
 
-* `load-stations.py` - python reader for GloSATp02 database
+* `load-stations.py` - python reader for GloSAT.p0x station data from the CRUTEM land surface air temperature releases
 * `plot-prelim-stripes.py` - script to plot global, NH and SH timeseries and climate stripes
 * `plot-prelim-maps.py` - script to plot global maps of mean annual temperature anomaly per year 
 * `plot-prelim-stations.py` - script to calculate baselines, anomalies and plot station level timeseries
