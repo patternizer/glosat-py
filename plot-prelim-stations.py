@@ -4,11 +4,12 @@
 #------------------------------------------------------------------------------
 # PROGRAM: plot-prelim-stations.py
 #------------------------------------------------------------------------------
-# Version 0.19
-# 25 October, 2020
+# Version 0.21
+# 25 May, 2021
 # Michael Taylor
 # https://patternizer.github.io
 # patternizer AT gmail DOT com
+# michael DOT a DOT taylor AT uea DOT ac DOT uk
 #------------------------------------------------------------------------------
 
 #------------------------------------------------------------------------------
@@ -19,7 +20,6 @@ import numpy as np
 import numpy.ma as ma
 from scipy.interpolate import griddata
 from scipy import spatial
-from mod import Mod
 import itertools
 import pandas as pd
 import xarray as xr
@@ -78,9 +78,9 @@ lat_start = -90;  lat_end = 90
 lon_start = -180; lon_end = 180
 station_start=0;  station_end=10
 
-load_df_temp = True    
-load_df_anom = True
-load_df_norm = True
+load_df_temp = False    
+load_df_anom = False
+load_df_norm = False
 load_df_normals = False
 plot_rank = False
 plot_fry = False
@@ -295,9 +295,9 @@ if load_df_temp == True:
 
 else:    
     
-    print('read stat4.GloSATprelim03.1658-2020.txt ...')
+    print('read stat4.postqc.CRUTEM.5.0.1.0-202103.txt ...')
 
-    filename_txt = 'stat4.GloSATprelim03.1658-2020.txt'
+    filename_txt = 'stat4.postqc.CRUTEM.5.0.1.0-202103.txt'
     df = load_dataframe(filename_txt)
 
     #------------------------------------------------------------------------------
@@ -368,7 +368,9 @@ else:
 
     print('extracting normals ...')
 
-    file = 'normals5.GloSAT.prelim03_FRYuse_ocPLAUS1_iqr3.600reg0.3_19411990_MIN15_OCany_19611990_MIN15_PERDEC00_NManySDreq.txt'
+    file = 'CRUTEM.5.0.1.0.normals5.txt'
+
+#    file = 'normals5.GloSAT.prelim03_FRYuse_ocPLAUS1_iqr3.600reg0.3_19411990_MIN15_OCany_19611990_MIN15_PERDEC00_NManySDreq.txt'
 #    file = 'normals5.GloSAT.prelim02_FRYuse_ocPLAUS1_iqr3.600reg0.3_19411990_MIN15_OCany_19611990_MIN15_PERDEC00_NManySDreq.txt'
 #    file = 'normals5.GloSAT.prelim01_FRYuse_ocPLAUS1_iqr3.600reg0.3_19411990_MIN15_OCany_19611990_MIN15_PERDEC00_NManySDreq.txt'
 
@@ -1032,7 +1034,7 @@ if plot_temporal_change == True:
                   try: val[j] = float(words[j+1])
                   except: pass
               if not None in val:
-                  if Mod(i,2) == 0:
+                  if i%2 == 0:
                       dates.append(date)
                       anom.append(val) 
                   else:
@@ -1071,7 +1073,7 @@ if plot_temporal_change == True:
                   try: val[j] = float(words[j+1])
                   except: pass
               if not None in val:
-                  if Mod(i,2) == 0:
+                  if i%2 == 0:
                       dates.append(date)
                       anom.append(val) 
                   else:
@@ -1110,7 +1112,7 @@ if plot_temporal_change == True:
                   try: val[j] = float(words[j+1])
                   except: pass
               if not None in val:
-                  if Mod(i,2) == 0:
+                  if i%2 == 0:
                       dates.append(date)
                       anom.append(val) 
                   else:
@@ -1149,7 +1151,7 @@ if plot_temporal_change == True:
                   try: val[j] = float(words[j+1])
                   except: pass
               if not None in val:
-                  if Mod(i,2) == 0:
+                  if i%2 == 0:
                       dates.append(date)
                       anom.append(val) 
                   else:
@@ -1188,7 +1190,7 @@ if plot_temporal_change == True:
                   try: val[j] = float(words[j+1])
                   except: pass
               if not None in val:
-                  if Mod(i,2) == 0:
+                  if i%2 == 0:
                       dates.append(date)
                       anom.append(val) 
                   else:
@@ -1227,7 +1229,7 @@ if plot_temporal_change == True:
                   try: val[j] = float(words[j+1])
                   except: pass
               if not None in val:
-                  if Mod(i,2) == 0:
+                  if i%2 == 0:
                       dates.append(date)
                       anom.append(val) 
                   else:
@@ -2025,7 +2027,7 @@ if plot_station_climatology == True:
 #                c=next(color)
 #                l = 1.5
 #                plt.plot(np.arange(1,13),Y.iloc[:,i],c=c,zorder=1,linewidth=l,alpha=1)       
-#            if (Mod(i,10) == 0)|(i==n-1):
+#            if (i%10 == 0)|(i==n-1):
 #                plt.text(12.5, Y.iloc[-1,i], "{0:.0f}".format(X.iloc[i]), color=c,fontsize=9,ha='center',va='center')          
 #        plt.ylabel("Monthly temperature anomaly, $\mathrm{\degree}C$",fontsize=16, color='darkgrey') 
 #        xlabels = list(['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'])
@@ -2091,8 +2093,17 @@ if plot_station_locations_counts == True:
     #------------------------------------------------------------------------------
 
     print('plot_station_locations_counts ...')
+    
+    df_anom_in = df_anom.copy()
+    df_normals = pd.read_pickle('DATA/df_normals.pkl', compression='bz2')
+    ds_all = df_anom_in[df_anom_in['stationcode'].isin(df_normals[df_normals['sourcecode']>1]['stationcode'])]
 
-    ds = df_temp.copy()
+#    ds_all = df_anom.copy()
+    
+    start_year = 1781
+    end_year = 1849
+    
+    ds = ds_all[(ds_all['stationfirstyear']>=start_year)&(ds_all['stationfirstyear']<=end_year)]
 
     lon = ds.groupby('stationcode').mean()['stationlon']
     lat = ds.groupby('stationcode').mean()['stationlat']
@@ -2106,10 +2117,9 @@ if plot_station_locations_counts == True:
         stationmonths.append(months)
     stationmonths = np.nansum(stationmonths,axis=0)
 #   plt.plot(ds['stationcode'].unique().astype('int'),stationmonths)    
-    
+
     df = pd.DataFrame({'lon':lon, 'lat':lat, 'stationmonths':stationmonths})
-    dg = df[df['stationmonths']>0]
-        
+    dg = df[df['stationmonths']>0] 
     v = np.log10(stationmonths)
     v = dg['stationmonths']
     x, y = np.meshgrid(dg['lon'], dg['lat'])    
@@ -2120,7 +2130,7 @@ if plot_station_locations_counts == True:
 #   vmax = np.percentile(v,75)
     
     figstr = 'location_map_counts.png'
-    titlestr = 'Number of months (1658-2020) with at least 1 observation'
+    titlestr = 'Number of months of observations for stations ('+str(start_year)+'-'+str(end_year)+') with 1961-1990 baseline normals'
 #   colorbarstr = 'Station months'
     colorbarstr = ''
     cmap = 'magma'
@@ -2155,8 +2165,8 @@ if plot_station_locations_counts == True:
     if projection == 'platecarree':
         ax.set_extent([-180, 180, -90, 90], crs=p)    
         gl = ax.gridlines(crs=p, draw_labels=True, linewidth=1, color='black', alpha=0.5, linestyle='-')
-        gl.xlabels_top = False
-        gl.ylabels_right = False
+#        gl.xlabels_top = False
+#        gl.ylabels_right = False
         gl.xlines = True
         gl.ylines = True
         gl.xlocator = mticker.FixedLocator([-180,-120,-60,0,60,120,180])
@@ -2173,13 +2183,17 @@ if plot_station_locations_counts == True:
 #            im = ax.pcolor(ma.masked_where(mask, x0), ma.masked_where(mask, x1), ma.masked_where(mask, v), vmin=vmin, vmax=vmax, transform=ax.projection, cmap=cmap) 
 #    im.set_clim(vmin,vmax)
        
-#   ax.add_feature(cartopy.feature.OCEAN, zorder=100, edgecolor='k')
+    ax.add_feature(cartopy.feature.OCEAN, zorder=100, alpha=0.2, edgecolor='k')
     plt.scatter(x=dg['lon'], y=dg['lat'], 
-                c=np.log10(dg['stationmonths']), s=1, alpha=1.0,
+                c=np.log10(dg['stationmonths']), s=50, alpha=1.0,
                 transform=ccrs.PlateCarree(), cmap=cmap) 
-    cb = plt.colorbar(orientation="horizontal", shrink=0.5, pad=0.05, extend='max')    
+#    plt.scatter(x=dg['lon'], y=dg['lat'], 
+#                c=dg['stationmonths'], s=50, alpha=1.0,
+#                transform=ccrs.PlateCarree(), cmap=cmap) 
+    cb = plt.colorbar(orientation="horizontal", shrink=0.7, pad=0.05, extend='both')    
     cb.set_label(colorbarstr, labelpad=0, fontsize=fontsize)
-    cb.ax.set_xticklabels(['1','10','100','1000']) 
+    cb.ax.set_xticks(['1','10','100','1000','10000','100000']) 
+    cb.ax.set_xticklabels(['1','10','100','1000','10000','100000']) 
     cb.ax.tick_params(labelsize=fontsize)
     plt.title(titlestr, fontsize=fontsize, pad=20)
     plt.savefig(figstr)

@@ -11,7 +11,6 @@
 # Numerics and dataframe libraries:
 import numpy as np
 import numpy.ma as ma
-from mod import Mod
 import scipy
 import scipy.stats as stats    
 import pandas as pd

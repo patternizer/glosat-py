@@ -28,7 +28,8 @@ warnings.filterwarnings("ignore", category=UserWarning)
 # SETTINGS: 
 #------------------------------------------------------------------------------
 
-filename_txt = 'stat4.GloSATprelim03.1658-2020.txt'
+filename_txt = 'stat4.postqc.CRUTEM.5.0.1.0-202103.txt'
+
 load_df = True
 save_df = True
 use_pickle = True
