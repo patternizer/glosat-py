@@ -1,26 +1,30 @@
-![image](https://github.com/patternizer/glosat-py/blob/master/glosat-station-viewer-app.png)
+![image](https://github.com/patternizer/glosat-py/blob/main/glosat-station-viewer-app.png)
 
 # glosat-py
 
-Experimental python dataviz tools for reading, plotting and inspecting GloSAT.p0x station data from the CRUTEM land surface air temperature releases for the [GloSAT Project](https://www.glosat.org):
+Experimental station viewer Plotly Python Dash app for inspecting GloSAT.p03 land surface air temperature data. Part of ongoing work for the [GloSAT Project](https://www.glosat.org):
 
-* python reader for GloSAT.p0x station database
-* plot station level monthly timeseries
-* plot station level monthly climatology
-* plot station locations on world map
-* plot mean annual anomaly climate stripes (1900-2019) from 1961-1990 baseline
-* plot global mean annual anomaly maps
+* station info (lat, lon, elevation and WMO metadata)
+* station location on zoomable OpenStreetmap
+* station climate stripes ([Ed Hawkins, University of Reading](https://showyourstripes.info)
+* station monthly and yearly moving average anomaly timeseries (from 1961-1990)
+* station seasonal decadal mean anomaly timeseries
+* station anomalies ranked by year
+* station monthly climatology of absolute temperature
 * station inspector app
+* python reader for GloSAT.p0x station database in Pandas pickle format
 
-[Plotly Python Reactive Dash app](https://glosat-py.herokuapp.com/) for inspecting GloSAT.p0x station timeseries, monthly climatology and location. 
+[Experimental version](https://glosat-py.herokuapp.com/) available for issue-checking. 
 
 ## Contents
 
-* `load-stations.py` - python reader for GloSAT.p0x station data from the CRUTEM land surface air temperature releases
-* `plot-prelim-stripes.py` - script to plot global, NH and SH timeseries and climate stripes
-* `plot-prelim-maps.py` - script to plot global maps of mean annual temperature anomaly per year 
-* `plot-prelim-stations.py` - script to calculate baselines, anomalies and plot station level timeseries
-* `app.py` - Plotly Python Reactive Dash app
+* `index.py` - Plotly Python Reactive Dash app index file
+* `app.py` - Plotly Python dash instance
+* `Procfile` - gunicorn deployment settings
+* `runtime.txt` - Python build version
+* `requirements.txt` - Python library dependencies
+* `filter_cru_dft.py` - Python dicrete Fourier transform filter for decadal smoothing of seasonal timeseries
+* `ml_optimisation.csv` - Look-up table for the DFT filter
 
 The first step is to clone the latest glosat-py code and step into the check out directory: 
 
@@ -30,17 +34,11 @@ The first step is to clone the latest glosat-py code and step into the check out
 ### Using Standard Python
 
 The code should run with the [standard CPython](https://www.python.org/downloads/) installation and was tested 
-in a conda virtual environment running a 64-bit version of Python 3.6+.
+in a conda virtual environment running a 64-bit version of Python 3.8.3.
 
-glosat-py scripts can be run from sources directly, once the dependencies in the requirements.txt are resolved.
+The glosat-py app instance can be run locally at [localhost](http://127.0.0.1:8050/) by calling:
 
-Run with:
-
-    $ python load-stations.py
-    $ python plot-prelim-stripes.py
-    $ python plot-prelim-maps.py
-    $ python plot-prelim-stations.py
-    $ python app.py
+    $ python index.py
 
 ## License
 
