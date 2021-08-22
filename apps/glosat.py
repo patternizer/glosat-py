@@ -1,8 +1,8 @@
 #------------------------------------------------------------------------------
 # PROGRAM: glosat.py
 #------------------------------------------------------------------------------
-# Version 0.14 (from standalone app versioning)
-# 25 October, 2020
+# Version 0.15
+# 22 August, 2021
 # Michael Taylor
 # https://patternizer.github.io
 # patternizer AT gmail DOT com
@@ -48,9 +48,19 @@ import dash_bootstrap_components as dbc
 from app import app
 
 #------------------------------------------------------------------------------
+import filter_cru_dft as cru # CRU DFT filter
+#------------------------------------------------------------------------------
+
+#------------------------------------------------------------------------------
 # SETTINGS: 
 #------------------------------------------------------------------------------
 fontsize = 12
+
+# Seasonal mean parameters
+
+nsmooth = 60                 # 5yr MA monthly
+nfft = 16                    # power of 2 for the DFT
+w = 10                       # decadal seasonal means 
 
 #df_temp = pd.read_csv('df_temp.csv', index_col=0)
 #df_anom = pd.read_csv('df_anom.csv', index_col=0)
@@ -62,6 +72,17 @@ stationcodestr = gb['stationcode']
 stationnamestr = gb['stationname'].apply(', '.join).str.lower()
 stationstr = stationcodestr + ': ' + stationnamestr
 opts = [{'label' : stationstr[i], 'value' : i} for i in range(len(stationstr))]
+
+#------------------------------------------------------------------------------
+# METHODS: 
+#------------------------------------------------------------------------------
+    
+def smooth_fft(x, span):  
+    
+    y_lo, y_hi, zvarlo, zvarhi, fc, pctl = cru.cru_filter_dft(x, span)    
+    x_filtered = y_lo
+
+    return x_filtered
 
 #------------------------------------------------------------------------------
 # GloSAT APP LAYOUT
@@ -94,11 +115,13 @@ layout = html.Div([
                 ),
             ]), 
             width=2, 
-            ),      
-            dbc.Col(
-                dcc.Graph(id="station-info"), 
-            width=4, 
-            ),                        
+            ),                             
+            dbc.Col( html.Div([
+                dcc.Graph(id="station-info", style = {'padding' : '10px', 'width': '100%', 'display': 'inline-block'}), 
+            ]), 
+            width={'size':6}, 
+            ),               
+            
         ]),
 
         dbc.Row([
@@ -120,11 +143,11 @@ layout = html.Div([
             ]), 
             width={'size':6}, 
             ),                        
-            dbc.Col(html.Div([
-                dcc.Graph(id="plot-climatology", style = {'padding' : '10px', 'width': '100%', 'display': 'inline-block'}),                                 
+            dbc.Col(html.Div([                    
+                dcc.Graph(id="plot-seasons", style = {'padding' : '10px', 'width': '100%', 'display': 'inline-block'}),                                      
             ]), 
             width={'size':6}, 
-            ),            
+            ),                                    
         ]),
 
         dbc.Row([
@@ -133,23 +156,32 @@ layout = html.Div([
             ]), 
             width={'size':6}, 
             ),
-            dbc.Col(html.Div([     
-                dcc.Graph(id="plot-spiral", style = {'padding' : '10px', 'width': '100%', 'display': 'inline-block'}),                                 
+            dbc.Col(html.Div([
+                dcc.Graph(id="plot-climatology", style = {'padding' : '10px', 'width': '100%', 'display': 'inline-block'}),                                 
             ]), 
             width={'size':6}, 
-            ),
+            ),            
+        ]),
+        
+        dbc.Row([
 #            dbc.Col(html.Div([     
-#                html.Br(),
-#                html.Label(['Status: Experimental']),
-#                html.Br(),
-#                html.Label(['Dataset: GloSATp02']),
-#                html.Br(),
-#                html.Label(['Dataviz: ', html.A('Github', href='https://github.com/patternizer/glosat-py'), ' (dev)']),                
-#            ],
-#            style = {'padding' : '10px', 'width': '100%', 'display': 'inline-block'}),    
+#                dcc.Graph(id="plot-spiral", style = {'padding' : '10px', 'width': '100%', 'display': 'inline-block'}),                                 
+#            ]), 
 #            width={'size':6}, 
 #            ),
-        ]),
+
+            dbc.Col(html.Div([     
+                html.Br(),
+                html.Label(['Status: Experimental']),
+                html.Br(),
+                html.Label(['Dataset: GloSAT.p03']),
+                html.Br(),
+                html.Label(['Codebase: ', html.A('Github', href='https://github.com/patternizer/glosat-py')]),                
+            ],
+            style = {'padding' : '10px', 'width': '100%', 'display': 'inline-block'}),    
+            width={'size':6}, 
+            ),
+        ]),        
             
     ]),
 ])
@@ -172,7 +204,7 @@ def update_station_info(value):
     lat = df_temp[df_temp['stationcode']==df_temp['stationcode'].unique()[value]]['stationlat'].iloc[0]
     lon = df_temp[df_temp['stationcode']==df_temp['stationcode'].unique()[value]]['stationlon'].iloc[0]
     elevation = df_temp[df_temp['stationcode']==df_temp['stationcode'].unique()[value]]['stationelevation'].iloc[0]
-    station = df_temp[df_temp['stationcode']==df_temp['stationcode'].unique()[value]]['stationname'].iloc[0].lower()
+    station = df_temp[df_temp['stationcode']==df_temp['stationcode'].unique()[value]]['stationname'].iloc[0].upper()
     country = df_temp[df_temp['stationcode']==df_temp['stationcode'].unique()[value]]['stationcountry'].iloc[0]
                                   
     data = [
@@ -197,7 +229,7 @@ def update_station_info(value):
                 align='left')
         ),
     ]
-    layout = go.Layout(template = "plotly_dark", height=100, width=600, margin=dict(r=10, l=10, b=10, t=10))
+    layout = go.Layout(template = "plotly_dark", height=100, width=500, margin=dict(r=10, l=10, b=10, t=10))
 
     return {'data': data, 'layout':layout} 
 
@@ -219,23 +251,25 @@ def update_plot_worldmap(value):
     hexcolors = [ "#{:02x}{:02x}{:02x}".format(int(colors[i][0]*255),int(colors[i][1]*255),int(colors[i][2]*255)) for i in range(len(colors)) ]
     cmap = hexcolors
 
-    lat = [df_temp[df_temp['stationcode']==df_temp['stationcode'].unique()[value]]['stationlat'].iloc[0]]
-    lon = [df_temp[df_temp['stationcode']==df_temp['stationcode'].unique()[value]]['stationlon'].iloc[0]]
-    station = df_temp[df_temp['stationcode']==df_temp['stationcode'].unique()[value]]['stationcode'].iloc[0]
-    
+    lat = [np.round( df_temp[df_temp['stationcode']==df_temp['stationcode'].unique()[value]]['stationlat'].iloc[0], 2)]
+    lon = [np.round( df_temp[df_temp['stationcode']==df_temp['stationcode'].unique()[value]]['stationlon'].iloc[0], 2)]
+    station = df_temp[df_temp['stationcode']==df_temp['stationcode'].unique()[value]]['stationcode'].iloc[0].upper()
+        
     fig = go.Figure(
-        px.scatter_mapbox(lat=lat, lon=lon, color_discrete_sequence=["darkred"], zoom=1))
+        px.scatter_mapbox(lat=lat, lon=lon, color_discrete_sequence=["red"], zoom=5))
     fig.update_layout(
         template = "plotly_dark",
 #       template = None,
         xaxis_title = {'text': 'Longitude, °E'},
         yaxis_title = {'text': 'Latitude, °N'},
+        title = {'text': 'LOCATION', 'x':0.1, 'y':0.95},        
     )
-    fig.update_layout(mapbox_style="carto-positron", mapbox_center_lat=lat[0], mapbox_center_lon=lon[0]) 
+#   fig.update_layout(mapbox_style="carto-positron", mapbox_center_lat=lat[0], mapbox_center_lon=lon[0]) 
 #   fig.update_layout(mapbox_style="stamen-watercolor", mapbox_center_lat=lat, mapbox_center_lon=lon) 
 #   fig.update_layout(mapbox_style="stamen-terrain", mapbox_center_lat=lat[0], mapbox_center_lon=lon 
-#   fig.update_layout(title={'text': 'Location', 'x':0.5, 'y':0.925, 'xanchor': 'center', 'yanchor': 'top'})    
-    fig.update_layout(height=300, width=600, margin={"r":50,"t":10,"l":50,"b":60})
+    fig.update_layout(mapbox_style="open-street-map", mapbox_center_lat=lat[0], mapbox_center_lon=lon[0]) 
+#    fig.update_layout(title={'text': 'LOCATION', 'x':0.1, 'y':0.95, 'xanchor': 'left', 'yanchor': 'top'})    
+    fig.update_layout(height=400, width=500, margin={"r":10,"t":50,"l":10,"b":40})    
     
     return fig
 
@@ -295,13 +329,16 @@ def update_plot_stripes(value,trim):
 
     #--------------------------------------------------------------------------
         
-    data=[
+    data = []
+    trace_stripes = [
         go.Bar(y=ts_ones, x=t_yearly, 
             marker = dict(color = ts_yearly_normed, colorscale='RdBu_r', line_width=0),  
             name = 'NaN',
             showlegend=False,
             hoverinfo='none',
-        ),            
+        ),
+    ]            
+    trace_series = [
         go.Scatter(x=t_yearly, y=ts_yearly_normed, 
             mode='lines', 
             line=dict(width=2, color='black'),
@@ -309,7 +346,9 @@ def update_plot_stripes(value,trim):
             showlegend=False,
             hoverinfo='none',                                                                               
         ),
-    ]   
+    ]
+    data = data + trace_stripes + trace_series
+#    data = data + trace_stripes
     
     fig = go.Figure(data)
     fig.update_layout(
@@ -319,17 +358,18 @@ def update_plot_stripes(value,trim):
         yaxis_title = {'text': 'Annual anomaly (from 1961-1990), °C'},        
         xaxis = dict(
             range = [t_yearly[0], t_yearly[-1]],
-            showgrid = False, # thin lines in the background
-            zeroline = False, # thick line at x=0
-            visible = True,   # numbers below
+#            showgrid = False, # thin lines in the background
+#            zeroline = False, # thick line at x=0
+#            visible = True,   # numbers below
         ), 
         yaxis = dict(
             range = [0, 1],
-            showgrid = False, # thin lines in the background
-            zeroline = False, # thick line at x=0
-            visible = True,   # numbers below
+#            showgrid = False, # thin lines in the background
+#            zeroline = False, # thick line at x=0
+#            visible = True,   # numbers below
         ), 
-        showlegend = True,    
+        title = {'text': 'CLIMATE STRIPES', 'x':0.1, 'y':0.95},
+        showlegend = False,    
     )
     fig.update_yaxes(showticklabels = False) # hide all the xticks        
     fig.update_layout(legend=dict(
@@ -339,7 +379,7 @@ def update_plot_stripes(value,trim):
         xanchor="left",
         x=0.8),
     )
-    fig.update_layout(height=300, width=600, margin={"r":10,"t":10,"l":50,"b":10})    
+    fig.update_layout(height=400, width=500, margin={"r":10,"t":50,"l":50,"b":10})    
     
     return fig
 
@@ -421,28 +461,21 @@ def update_plot_timeseries(value,trim):
         ts_yearly_ptp = ts_yearly[mask].ptp()
         ts_yearly_normed = ((ts_yearly - ts_yearly_min) / ts_yearly_ptp)             
 
-        data=[
+        data = []
+        trace_monthly = [
             go.Scatter(x=t_monthly, y=ts_monthly, 
-                mode='lines+markers', 
-                legendgroup="a",
-                line=dict(width=1.0, color='lightgrey'),
-                marker=dict(size=5, opacity=0.5, color='grey'),
+                mode='markers', 
+                marker=dict(size=5, opacity=0.2, color='grey'),
                 name='Monthly',
-                yaxis='y1',
-                error_y=dict(
-                    type='constant',
-                    array=ts_yearly_sd,
-                    visible=False),
-            ),
+            )]
+        trace_yearly = [
             go.Scatter(x=t_yearly, y=ts_yearly, 
                 mode='lines+markers', 
-                legendgroup="a",
                 line=dict(width=1.0, color='black'),
                 marker=dict(size=7, symbol='square', opacity=1.0, color = ts_yearly_normed, colorscale='RdBu_r', line_width=1),                  
                 name='Yearly',
-                yaxis='y1',
-            )
-        ]   
+            )]
+        data = data + trace_monthly + trace_yearly   
                                       
     fig = go.Figure(data)
     fig.update_layout(
@@ -451,6 +484,7 @@ def update_plot_timeseries(value,trim):
         xaxis = dict(range=[t_yearly[0],t_yearly[-1]]),       
         xaxis_title = {'text': 'Year'},
         yaxis_title = {'text': 'Anomaly (from 1961-1990), °C'},
+        title = {'text': 'OBSERVATIONS', 'x':0.1, 'y':0.95},
     )
 
     if mask.sum() == 0:
@@ -471,14 +505,138 @@ def update_plot_timeseries(value,trim):
                 )
             ]
         )    
+    fig.update_layout(
+        legend=dict(
+            orientation='v',
+            yanchor="top",
+            y=0.3,
+            xanchor="left",
+            x=0.8),              
+    )        
+    fig.update_layout(height=400, width=500, margin={"r":10,"t":50,"l":70,"b":50})    
+
+    return fig
+
+@app.callback(
+    Output(component_id='plot-seasons', component_property='figure'),
+    [Input(component_id='station', component_property='value'),    
+    Input(component_id='radio-fry', component_property='value')],    
+    )
+    
+def update_plot_seasons(value,trim):
+    
+    """
+    Plot station seasonal timeseries
+    """
+
+    if trim == 'On':
+        fry = df_anom[df_anom['stationcode']==df_anom['stationcode'].unique()[value]]['stationfirstreliable'].unique()
+        da = df_anom[ (df_anom['year']>=fry[0]) & (df_anom['stationcode']==df_anom['stationcode'].unique()[value]) ].iloc[:,range(0,13)]
+    elif trim == 'Off':   
+        da = df_anom[df_anom['stationcode']==df_anom['stationcode'].unique()[value]].iloc[:,range(0,13)]
+
+    # TRIM: to 1678 to work-around Pandas datetime limit
+
+    da = da[da.year >= 1678].reset_index(drop=True)
+
+    ts_monthly = []    
+    for i in range(len(da)):            
+        monthly = da.iloc[i,1:]
+        ts_monthly = ts_monthly + monthly.to_list()    
+    ts_monthly = np.array(ts_monthly)   
+    t_monthly = pd.date_range(start=str(da.year.iloc[0]), periods=len(ts_monthly), freq='MS')    
+    df = pd.DataFrame({'Tg':ts_monthly}, index=t_monthly)     
+
+    t = [ pd.to_datetime( str(df.index.year.unique()[i])+'-01-01') for i in range(len(df.index.year.unique())) ] # years
+    DJF = ( df[df.index.month==12]['Tg'].values + df[df.index.month==1]['Tg'].values + df[df.index.month==2]['Tg'].values ) / 3
+    MAM = ( df[df.index.month==3]['Tg'].values + df[df.index.month==4]['Tg'].values + df[df.index.month==5]['Tg'].values ) / 3
+    JJA = ( df[df.index.month==6]['Tg'].values + df[df.index.month==7]['Tg'].values + df[df.index.month==8]['Tg'].values ) / 3
+    SON = ( df[df.index.month==9]['Tg'].values + df[df.index.month==10]['Tg'].values + df[df.index.month==11]['Tg'].values ) / 3
+    df_seasonal = pd.DataFrame({'DJF':DJF, 'MAM':MAM, 'JJA':JJA, 'SON':SON}, index = t)
+          
+    df_seasonal_ma = df_seasonal.rolling(10, center=True).mean() # decadal smoothing
+    mask = np.isfinite(df_seasonal_ma)
+
+#   dates = pd.date_range(start='1678-01-01', end='2021-12-01', freq='MS')
+    dates = df_seasonal_ma.index
+    df_seasonal_fft = pd.DataFrame(index=dates)
+    df_seasonal_fft['DJF'] = pd.DataFrame({'DJF':smooth_fft(df_seasonal_ma['DJF'].values[mask['DJF']], nfft)}, index=df_seasonal_ma['DJF'].index[mask['DJF']])
+    df_seasonal_fft['MAM'] = pd.DataFrame({'DJF':smooth_fft(df_seasonal_ma['MAM'].values[mask['MAM']], nfft)}, index=df_seasonal_ma['MAM'].index[mask['MAM']])
+    df_seasonal_fft['JJA'] = pd.DataFrame({'DJF':smooth_fft(df_seasonal_ma['JJA'].values[mask['JJA']], nfft)}, index=df_seasonal_ma['JJA'].index[mask['JJA']])
+    df_seasonal_fft['SON'] = pd.DataFrame({'DJF':smooth_fft(df_seasonal_ma['SON'].values[mask['SON']], nfft)}, index=df_seasonal_ma['SON'].index[mask['SON']])
+                
+    mask = np.isfinite(df_seasonal_fft)
+    data = []
+    trace_winter=[
+            go.Scatter(                                  
+                x=df_seasonal_fft.index[mask['DJF']], y=df_seasonal_fft['DJF'][mask['DJF']], 
+                mode='lines+markers', 
+                line=dict(width=3, color='black'),
+                marker=dict(size=7, symbol='square', opacity=1.0, color='blue', line_width=1, line_color='black'),                       
+                name='Winter (DJF)')
+    ]
+    trace_spring=[
+            go.Scatter(                                  
+                x=df_seasonal_fft.index[mask['MAM']], y=df_seasonal_fft['MAM'][mask['MAM']], 
+                mode='lines+markers', 
+                line=dict(width=3, color='black'),
+                marker=dict(size=7, symbol='square', opacity=1.0, color='red', line_width=1, line_color='black'),       
+                name='Spring (MAM)')
+    ]
+    trace_summer=[
+            go.Scatter(                                  
+                x=df_seasonal_fft.index[mask['JJA']], y=df_seasonal_fft['JJA'][mask['JJA']], 
+                mode='lines+markers', 
+                line=dict(width=3, color='black'),
+                marker=dict(size=7, symbol='square', opacity=1.0, color='purple', line_width=1, line_color='black'),       
+                name='Summer (JJA)')
+    ]
+    trace_autumn=[
+            go.Scatter(                                  
+                x=df_seasonal_fft.index[mask['SON']], y=df_seasonal_fft['SON'][mask['SON']], 
+                mode='lines+markers', 
+                line=dict(width=3, color='black'),
+                marker=dict(size=7, symbol='square', opacity=1.0, color='green', line_width=1, line_color='black'),       
+                name='Autumn (SON)')
+    ]
+    data = data + trace_winter + trace_spring + trace_summer + trace_autumn
+                                          
+    fig = go.Figure(data)
+    fig.update_layout(
+        template = "plotly_dark",
+#       template = None,
+        xaxis = dict(range=[dates[0],dates[-1]]),       
+        xaxis_title = {'text': 'Year'},
+        yaxis_title = {'text': 'Anomaly (from 1961-1990), °C'},
+        title = {'text': 'SEASONAL DECADAL MEAN', 'x':0.1, 'y':0.95},
+    )
+
+    if mask.sum().all() == 0:
+        fig.update_layout(
+            annotations=[
+                dict(
+                    x=dates[np.floor(len(dates)/2).astype(int)],
+                    y=0,
+                    xref="x",
+                    yref="y",
+                    text="No baseline anomaly",
+                    showarrow=False,
+                    font=dict(
+                        family="Courier New, monospace",
+                        size=16,
+                        color="#ffffff"
+                        ),                    
+                )
+            ]
+        )    
     fig.update_layout(legend=dict(
         orientation='v',
         yanchor="top",
-        y=0.3,
+        y=0.4,
         xanchor="left",
         x=0.8),
     )    
-    fig.update_layout(height=300, width=600, margin={"r":10,"t":10,"l":70,"b":10})    
+    fig.update_layout(height=400, width=500, margin={"r":10,"t":50,"l":70,"b":50})    
 
     return fig
 
@@ -598,49 +756,47 @@ def update_plot_climatology(value,trim):
                        showlegend=False)
         ] 
     data = data + trace_9_95
-    trace_max=[go.Scatter(                      
-        x=np.arange(1,13), y=df['max'], mode='lines', 
-        line=dict(width=3, color='pink'),
-        name='Highest in record')]
+    trace_max=[
+        go.Scatter(                      
+            x=np.arange(1,13), y=df['max'], mode='lines', 
+            line=dict(width=3, color='pink'),
+            name='Highest')
+    ]
     data = data + trace_max
-    trace_min=[go.Scatter(                      
-        x=np.arange(1,13), y=df['min'], mode='lines', 
-        line=dict(width=3, color='cyan'),
-        name='Lowest in record')]
+    trace_min=[
+        go.Scatter(                      
+            x=np.arange(1,13), y=df['min'], mode='lines', 
+            line=dict(width=3, color='cyan'),
+            name='Lowest')
+    ]
     data = data + trace_min
     
     for k in range(n):
-#        if Y.iloc[:,k].isnull().any():
-#        if Y.iloc[k,:].isnull().all():
-#            yearly = np.nan,
-#        else:
             trace=[go.Scatter(                      
                 x=np.arange(1,13), y=np.array(Y)[k,:], 
                 mode='lines', 
-#               mode='lines+markers', 
-#               line=dict(width=1.5),
                 line=dict(width=1, color=hexcolors[k]),
-#               marker=dict(size=3, symbol='square', opacity=1.0, color=hexcolors[k], line_width=1),                  
-#               marker=dict(size=3, symbol='square', opacity=0.5, color=hexcolors_mapped[k]),
-#               marker=dict(size=3, symbol='square', opacity=0.5, color = ts_yearly_normed[k], colorscale='RdBu_r'),                                
                 name=str(np.array(X)[k]),
                 showlegend=False,
                 )
             ]
             data = data + trace
 
-    trace_median=[go.Scatter(                      
-        x=np.arange(1,13), y=df['normal'], mode='lines', 
-        line=dict(width=3, color='white'),
-        name='1961-1990 normal')]
+    trace_median=[
+        go.Scatter(                      
+            x=np.arange(1,13), y=df['normal'], mode='lines', 
+            line=dict(width=3, color='white'),
+            name='1961-1990 normal')
+    ]
     data = data + trace_median
-    trace_latest=[go.Scatter(                      
-        x=np.arange(1,13), y=np.array(Y)[n-1,:], 
-        mode='lines+markers', 
-        line=dict(width=3, color=hexcolors[n-1]),
-        marker=dict(size=7, symbol='square', opacity=1.0, color='orange', line_width=1, line_color='black'),                  
-        name=str(np.array(X)[n-1]),
-        showlegend=True),
+    trace_latest=[
+        go.Scatter(                      
+            x=np.arange(1,13), y=np.array(Y)[n-1,:], 
+            mode='lines+markers', 
+            line=dict(width=3, color=hexcolors[n-1]),
+            marker=dict(size=7, symbol='square', opacity=1.0, color='orange', line_width=1, line_color='black'),                  
+            name=str(np.array(X)[n-1]),
+            showlegend=True),
     ]
     data = data + trace_latest
 
@@ -650,8 +806,9 @@ def update_plot_climatology(value,trim):
 #       template = None,
         xaxis_title = {'text': 'Month'},
         yaxis_title = {'text': 'Monthly temperature, °C'},
+        title = {'text': 'CLIMATOLOGY', 'x':0.1, 'y':0.95},        
     )
-    fig.update_layout(height=300, width=600, margin={"r":10,"t":10,"l":70,"b":10})
+    fig.update_layout(height=400, width=500, margin={"r":10,"t":50,"l":10,"b":50})
     
     return fig
 
@@ -768,6 +925,7 @@ def update_plot_ranks(value,trim):
 #       template = None,
         xaxis=dict(title='Rank', type='category'),         
         yaxis_title = {'text': 'Anomaly (from 1961-1990), °C'},
+        title = {'text': 'YEAR RANK', 'x':0.1, 'y':0.95},        
     )
     fig.update_xaxes(showticklabels = False) # hide all the xticks        
     fig.update_layout(legend=dict(
@@ -795,7 +953,7 @@ def update_plot_ranks(value,trim):
                 )
             ]
         )        
-    fig.update_layout(height=300, width=600, margin={"r":10,"t":10,"l":70,"b":10})    
+    fig.update_layout(height=400, width=500, margin={"r":10,"t":50,"l":70,"b":50})    
 
     return fig
 
@@ -887,7 +1045,7 @@ def update_plot_spiral(value,trim):
         ),
 #       annotations=[dict(x=0, y=0, text=str(da.iloc[0][0].astype('int')))],        
     )
-    fig.update_layout(height=300, width=600, margin={"r":80,"t":50,"l":70,"b":60})
+    fig.update_layout(height=400, width=500, margin={"r":80,"t":50,"l":70,"b":50})
     
     return fig
 
