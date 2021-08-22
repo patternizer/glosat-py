@@ -14,12 +14,14 @@ import dash_core_components as dcc
 import dash_bootstrap_components as dbc
 import dash_html_components as html
 
-plot_stripes = 'url(/assets/plot-stripes.png)'
-plot_timeseries = 'url(/assets/plot-timeseries.png)'
-plot_climatology = 'url(/assets/plot-climatology.png)'
-plot_ranks = 'url(/assets/plot-ranks.png)'
-plot_spiral = 'url(/assets/plot-spiral.png)'
 plot_fry = 'url(/assets/emily-stations-fry.png)'
+plot_stripes = 'url(/assets/plot-stripes.png)'
+plot_location = 'url(/assets/plot-location.png)'
+plot_timeseries = 'url(/assets/plot-timeseries.png)'
+plot_seasonal = 'url(/assets/plot-seasonal.png)'
+plot_ranks = 'url(/assets/plot-ranks.png)'
+plot_climatology = 'url(/assets/plot-climatology.png)'
+plot_spiral = 'url(/assets/plot-spiral.png)'
 
 
 faq_1 = [
@@ -54,11 +56,11 @@ faq_3 = [
 
 faq_4 = [
     dbc.CardHeader("FAQ #4"),
-    dbc.CardImg(src='assets/plot-climatology.png', top=True, style={'height':'10vh'}),
+    dbc.CardImg(src='assets/plot-seasonal.png', top=True, style={'height':'10vh'}),
     dbc.CardBody(
-        [html.H5("Monthly Climatology", className="card-title"),
+        [html.H5("Seasonal Series", className="card-title"),
         html.P(
-        "How is it calculated?",
+        "How are they calculated?",
         className="card-text")],
     )]
 
@@ -74,13 +76,23 @@ faq_5 = [
 
 faq_6 = [
     dbc.CardHeader("FAQ #6"),
-    dbc.CardImg(src='assets/plot-spiral.png', top=True, style={'height':'10vh'}),
+    dbc.CardImg(src='assets/plot-climatology.png', top=True, style={'height':'10vh'}),
     dbc.CardBody(
-        [html.H5("Warming Spiral", className="card-title"),
+        [html.H5("Monthly Climatology", className="card-title"),
         html.P(
         "How is it calculated?",
         className="card-text")],
     )]
+
+#faq_7 = [
+#    dbc.CardHeader("FAQ #7"),
+#    dbc.CardImg(src='assets/plot-spiral.png', top=True, style={'height':'10vh'}),
+#    dbc.CardBody(
+#        [html.H5("Warming Spiral", className="card-title"),
+#        html.P(
+#        "How is it calculated?",
+#        className="card-text")],
+#    )]
 
 layout = html.Div([
     dbc.Container([
