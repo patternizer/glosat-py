@@ -16,7 +16,7 @@ import dash_bootstrap_components as dbc
 from app import server
 from app import app
 # import all pages in the app
-from apps import home, glosat, about
+from apps import home, glosat, about, faq
 
 # building the navigation bar
 # https://github.com/facultyai/dash-bootstrap-components/blob/master/examples/advanced-component-usage/Navbars.py
@@ -24,6 +24,7 @@ dropdown = dbc.DropdownMenu(
     children=[
         dbc.DropdownMenuItem("Home", href="/home"),
         dbc.DropdownMenuItem("About", href="/about"),
+        dbc.DropdownMenuItem("FAQ", href="/faq"),
         dbc.DropdownMenuItem("App", href="/glosat"),
     ],
     nav = True,
@@ -89,6 +90,8 @@ def display_page(pathname):
         return glosat.layout
     elif pathname == '/about':
         return about.layout
+    elif pathname == '/faq':
+        return faq.layout
     else:
         return home.layout
 

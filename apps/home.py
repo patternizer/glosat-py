@@ -5,6 +5,7 @@
 # 25 October, 2020
 # Michael Taylor
 # https://patternizer.github.io
+# michael DOT a DOT taylor AT uea DOT ac DOT uk
 # patternizer AT gmail DOT com
 #------------------------------------------------------------------------------
 
@@ -71,10 +72,6 @@ layout = html.Div([
         ], className="mb-2"),
 
         html.P(['GloSAT Station Viewer is brought to you by the ', html.A('Climatic Research Unit', href='http://www.cru.uea.ac.uk'), ' in the School of Environmental Sciences, University of East Anglia']),
-
-#        dbc.Row([
-#            html.A("GloSAT Station Viewer is brought to you by the Climatic Research Unit at the University of East Anglia", href="http://www.cru.uea.ac.uk/"),
-#        ], className="mb-8"),
 
     ])
 ])

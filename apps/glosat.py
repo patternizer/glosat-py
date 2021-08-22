@@ -5,6 +5,7 @@
 # 22 August, 2021
 # Michael Taylor
 # https://patternizer.github.io
+# michael DOT a DOT taylor AT uea DOT ac DOT uk
 # patternizer AT gmail DOT com
 #------------------------------------------------------------------------------
 
@@ -209,7 +210,7 @@ def update_station_info(value):
                                   
     data = [
         go.Table(
-            header=dict(values=['Latitude [°N]','Longitude [°E]','Elev. AMSL [m]','Station','Country'],
+            header=dict(values=['Latitude <br> [°N]','Longitude <br> [°E]','Elevation <br> [m] AMSL','Station <br>','Country <br>'],
                 line_color='darkslategray',
                 fill_color='lightgrey',
                 font = dict(color='Black'),

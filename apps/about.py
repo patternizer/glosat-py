@@ -5,6 +5,7 @@
 # 30 October, 2020
 # Michael Taylor
 # https://patternizer.github.io
+# michael DOT a DOT taylor AT uea DOT ac DOT uk
 # patternizer AT gmail DOT com
 #------------------------------------------------------------------------------
 
@@ -23,15 +24,16 @@ plot_ranks = 'url(/assets/plot-ranks.png)'
 plot_climatology = 'url(/assets/plot-climatology.png)'
 plot_spiral = 'url(/assets/plot-spiral.png)'
 
-
 faq_1 = [
     dbc.CardHeader("FAQ #1"),
     dbc.CardImg(src='assets/emily-stations-fry.png', top=True, style={'height':'10vh'}),
     dbc.CardBody(
         [html.H5("First Reliable Years", className="card-title"),
-        html.P(
-        "How are they calculated?",
-        className="card-text")],
+#        html.P(
+#        "How are they calculated?",
+#        className="card-text"),
+        dbc.CardLink("How are they calculated?", href="/faq", target="_blank", style={'color':'navy'}),        
+        ],
     )]
 
 faq_2 = [
@@ -39,9 +41,11 @@ faq_2 = [
     dbc.CardImg(src='assets/plot-stripes.png', top=True, style={'height':'10vh'}),
     dbc.CardBody(
         [html.H5("Climate Stripes", className="card-title"),
-        html.P(
-        "How are they calculated?",
-        className="card-text")],
+#        html.P(
+#        "How are they calculated?",
+#        className="card-text"),
+        dbc.CardLink("How are they calculated?", href="/faq", target="_blank", style={'color':'navy'}),    
+        ],
     )]
 
 faq_3 = [
@@ -49,9 +53,11 @@ faq_3 = [
     dbc.CardImg(src='assets/plot-timeseries.png', top=True, style={'height':'10vh'}),
     dbc.CardBody(
         [html.H5("Anomaly Timeseries", className="card-title"),
-        html.P(
-        "How are they calculated?",
-        className="card-text")],
+#        html.P(
+#        "How are they calculated?",
+#        className="card-text"),
+        dbc.CardLink("How are they calculated?", href="/faq", target="_blank", style={'color':'navy'}),     
+        ],
     )]
 
 faq_4 = [
@@ -59,9 +65,11 @@ faq_4 = [
     dbc.CardImg(src='assets/plot-seasonal.png', top=True, style={'height':'10vh'}),
     dbc.CardBody(
         [html.H5("Seasonal Series", className="card-title"),
-        html.P(
-        "How are they calculated?",
-        className="card-text")],
+#        html.P(
+#        "How are they calculated?",
+#        className="card-text"),
+        dbc.CardLink("How are they calculated?", href="/faq", target="_blank", style={'color':'navy'}),      
+        ],
     )]
 
 faq_5 = [
@@ -69,9 +77,11 @@ faq_5 = [
     dbc.CardImg(src='assets/plot-ranks.png', top=True, style={'height':'10vh'}),
     dbc.CardBody(
         [html.H5("Rank Distribution", className="card-title"),
-        html.P(
-        "How is it calculated?",
-        className="card-text")],
+#        html.P(
+#        "How are they calculated?",
+#        className="card-text"),
+        dbc.CardLink("How is it calculated?", href="/faq", target="_blank", style={'color':'navy'}),       
+        ],
     )]
 
 faq_6 = [
@@ -79,9 +89,11 @@ faq_6 = [
     dbc.CardImg(src='assets/plot-climatology.png', top=True, style={'height':'10vh'}),
     dbc.CardBody(
         [html.H5("Monthly Climatology", className="card-title"),
-        html.P(
-        "How is it calculated?",
-        className="card-text")],
+#        html.P(
+#        "How are they calculated?",
+#        className="card-text"),
+        dbc.CardLink("How is it calculated?", href="/faq", target="_blank", style={'color':'navy'}),      
+        ],
     )]
 
 #faq_7 = [
@@ -89,9 +101,8 @@ faq_6 = [
 #    dbc.CardImg(src='assets/plot-spiral.png', top=True, style={'height':'10vh'}),
 #    dbc.CardBody(
 #        [html.H5("Warming Spiral", className="card-title"),
-#        html.P(
-#        "How is it calculated?",
-#        className="card-text")],
+#        dbc.CardLink("How is it calculated?", href="/faq", target="_blank", style={'color':'navy'}),       
+#        ],
 #    )]
 
 layout = html.Div([
