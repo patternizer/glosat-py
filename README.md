@@ -1,4 +1,4 @@
-![image](https://github.com/patternizer/glosat-py/blob/main/glosat-station-viewer-app.png)
+![image](https://github.com/patternizer/glosat-py/blob/main/glosat-station-viewer-app-about.png)
 
 # glosat-py
 
