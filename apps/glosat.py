@@ -230,7 +230,7 @@ def update_station_info(value):
                 align='left')
         ),
     ]
-    layout = go.Layout(template = "plotly_dark", height=100, width=550, margin=dict(r=10, l=10, b=10, t=10))
+    layout = go.Layout(template = "plotly_dark", height=150, width=550, margin=dict(r=10, l=10, b=10, t=10))
 
     return {'data': data, 'layout':layout} 
 
