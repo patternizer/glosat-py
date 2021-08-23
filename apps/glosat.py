@@ -230,7 +230,7 @@ def update_station_info(value):
                 align='left')
         ),
     ]
-    layout = go.Layout(template = "plotly_dark", height=100, width=500, margin=dict(r=10, l=10, b=10, t=10))
+    layout = go.Layout(template = "plotly_dark", height=100, width=550, margin=dict(r=10, l=10, b=10, t=10))
 
     return {'data': data, 'layout':layout} 
 
@@ -270,7 +270,7 @@ def update_plot_worldmap(value):
 #   fig.update_layout(mapbox_style="stamen-terrain", mapbox_center_lat=lat[0], mapbox_center_lon=lon 
     fig.update_layout(mapbox_style="open-street-map", mapbox_center_lat=lat[0], mapbox_center_lon=lon[0]) 
 #    fig.update_layout(title={'text': 'LOCATION', 'x':0.1, 'y':0.95, 'xanchor': 'left', 'yanchor': 'top'})    
-    fig.update_layout(height=400, width=500, margin={"r":10,"t":50,"l":10,"b":40})    
+    fig.update_layout(height=400, width=550, margin={"r":10,"t":50,"l":10,"b":40})    
     
     return fig
 
@@ -380,7 +380,7 @@ def update_plot_stripes(value,trim):
         xanchor="left",
         x=0.8),
     )
-    fig.update_layout(height=400, width=500, margin={"r":10,"t":50,"l":50,"b":10})    
+    fig.update_layout(height=400, width=550, margin={"r":10,"t":50,"l":50,"b":10})    
     
     return fig
 
@@ -514,7 +514,7 @@ def update_plot_timeseries(value,trim):
             xanchor="left",
             x=0.8),              
     )        
-    fig.update_layout(height=400, width=500, margin={"r":10,"t":50,"l":70,"b":50})    
+    fig.update_layout(height=400, width=550, margin={"r":10,"t":50,"l":70,"b":50})    
 
     return fig
 
@@ -637,7 +637,7 @@ def update_plot_seasons(value,trim):
         xanchor="left",
         x=0.8),
     )    
-    fig.update_layout(height=400, width=500, margin={"r":10,"t":50,"l":70,"b":50})    
+    fig.update_layout(height=400, width=550, margin={"r":10,"t":50,"l":70,"b":50})    
 
     return fig
 
@@ -809,7 +809,7 @@ def update_plot_climatology(value,trim):
         yaxis_title = {'text': 'Monthly temperature, °C'},
         title = {'text': 'CLIMATOLOGY', 'x':0.1, 'y':0.95},        
     )
-    fig.update_layout(height=400, width=500, margin={"r":10,"t":50,"l":10,"b":50})
+    fig.update_layout(height=400, width=550, margin={"r":10,"t":50,"l":10,"b":50})
     
     return fig
 
@@ -954,7 +954,7 @@ def update_plot_ranks(value,trim):
                 )
             ]
         )        
-    fig.update_layout(height=400, width=500, margin={"r":10,"t":50,"l":70,"b":50})    
+    fig.update_layout(height=400, width=550, margin={"r":10,"t":50,"l":70,"b":50})    
 
     return fig
 
@@ -1046,7 +1046,7 @@ def update_plot_spiral(value,trim):
         ),
 #       annotations=[dict(x=0, y=0, text=str(da.iloc[0][0].astype('int')))],        
     )
-    fig.update_layout(height=400, width=500, margin={"r":80,"t":50,"l":70,"b":50})
+    fig.update_layout(height=400, width=550, margin={"r":80,"t":50,"l":70,"b":50})
     
     return fig
 
