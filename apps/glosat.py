@@ -574,7 +574,7 @@ def update_plot_seasons(value,trim):
                 mode='lines+markers', 
                 line=dict(width=3, color='black'),
                 marker=dict(size=7, symbol='square', opacity=1.0, color='blue', line_width=1, line_color='black'),                       
-                name='Winter (DJF)')
+                name='DJF')
     ]
     trace_spring=[
             go.Scatter(                                  
@@ -582,7 +582,7 @@ def update_plot_seasons(value,trim):
                 mode='lines+markers', 
                 line=dict(width=3, color='black'),
                 marker=dict(size=7, symbol='square', opacity=1.0, color='red', line_width=1, line_color='black'),       
-                name='Spring (MAM)')
+                name='MAM')
     ]
     trace_summer=[
             go.Scatter(                                  
@@ -590,7 +590,7 @@ def update_plot_seasons(value,trim):
                 mode='lines+markers', 
                 line=dict(width=3, color='black'),
                 marker=dict(size=7, symbol='square', opacity=1.0, color='purple', line_width=1, line_color='black'),       
-                name='Summer (JJA)')
+                name='JJA')
     ]
     trace_autumn=[
             go.Scatter(                                  
@@ -598,7 +598,7 @@ def update_plot_seasons(value,trim):
                 mode='lines+markers', 
                 line=dict(width=3, color='black'),
                 marker=dict(size=7, symbol='square', opacity=1.0, color='green', line_width=1, line_color='black'),       
-                name='Autumn (SON)')
+                name='SON')
     ]
     data = data + trace_winter + trace_spring + trace_summer + trace_autumn
                                           
