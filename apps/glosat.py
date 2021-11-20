@@ -472,7 +472,7 @@ def update_plot_timeseries(value,trim):
         trace_yearly = [
             go.Scatter(x=t_yearly, y=ts_yearly, 
                 mode='lines+markers', 
-                line=dict(width=1.0, color='black'),
+                line=dict(width=1.0, color='white'),
                 marker=dict(size=7, symbol='square', opacity=1.0, color = ts_yearly_normed, colorscale='RdBu_r', line_width=1),                  
                 name='Yearly',
             )]
@@ -508,12 +508,12 @@ def update_plot_timeseries(value,trim):
         )    
     fig.update_layout(
         legend=dict(
-            orientation='v',
+            orientation='h',
             yanchor="top",
-            y=0.3,
+            y=0.1,
             xanchor="left",
-            x=0.8),              
-    )        
+            x=0.05),              
+    )     
     fig.update_layout(height=400, width=550, margin={"r":10,"t":50,"l":70,"b":50})    
 
     return fig
@@ -553,51 +553,49 @@ def update_plot_seasons(value,trim):
     MAM = ( df[df.index.month==3]['Tg'].values + df[df.index.month==4]['Tg'].values + df[df.index.month==5]['Tg'].values ) / 3
     JJA = ( df[df.index.month==6]['Tg'].values + df[df.index.month==7]['Tg'].values + df[df.index.month==8]['Tg'].values ) / 3
     SON = ( df[df.index.month==9]['Tg'].values + df[df.index.month==10]['Tg'].values + df[df.index.month==11]['Tg'].values ) / 3
-    df_seasonal = pd.DataFrame({'DJF':DJF, 'MAM':MAM, 'JJA':JJA, 'SON':SON}, index = t)
-          
-    df_seasonal_ma = df_seasonal.rolling(10, center=True).mean() # decadal smoothing
-    mask = np.isfinite(df_seasonal_ma)
-
-#   dates = pd.date_range(start='1678-01-01', end='2021-12-01', freq='MS')
-    dates = df_seasonal_ma.index
-    df_seasonal_fft = pd.DataFrame(index=dates)
-    df_seasonal_fft['DJF'] = pd.DataFrame({'DJF':smooth_fft(df_seasonal_ma['DJF'].values[mask['DJF']], nfft)}, index=df_seasonal_ma['DJF'].index[mask['DJF']])
-    df_seasonal_fft['MAM'] = pd.DataFrame({'DJF':smooth_fft(df_seasonal_ma['MAM'].values[mask['MAM']], nfft)}, index=df_seasonal_ma['MAM'].index[mask['MAM']])
-    df_seasonal_fft['JJA'] = pd.DataFrame({'DJF':smooth_fft(df_seasonal_ma['JJA'].values[mask['JJA']], nfft)}, index=df_seasonal_ma['JJA'].index[mask['JJA']])
-    df_seasonal_fft['SON'] = pd.DataFrame({'DJF':smooth_fft(df_seasonal_ma['SON'].values[mask['SON']], nfft)}, index=df_seasonal_ma['SON'].index[mask['SON']])
+    ONDJFM = ( df[df.index.month==10]['Tg'].values + df[df.index.month==11]['Tg'].values + df[df.index.month==12]['Tg'].values + df[df.index.month==1]['Tg'].values + df[df.index.month==2]['Tg'].values + df[df.index.month==3]['Tg'].values ) / 6
+    AMJJAS = ( df[df.index.month==4]['Tg'].values + df[df.index.month==5]['Tg'].values + df[df.index.month==6]['Tg'].values + df[df.index.month==7]['Tg'].values + df[df.index.month==8]['Tg'].values + df[df.index.month==9]['Tg'].values ) / 6        
+    df_seasonal = pd.DataFrame({'DJF':DJF, 'MAM':MAM, 'JJA':JJA, 'SON':SON, 'ONDJFM':ONDJFM, 'AMJJAS':AMJJAS}, index = t)   
+    mask = np.isfinite(df_seasonal)           
+    df_seasonal_fft = pd.DataFrame(index=df_seasonal.index)
+    df_seasonal_fft['DJF'] = pd.DataFrame({'DJF':smooth_fft(df_seasonal['DJF'].values[mask['DJF']], nfft)}, index=df_seasonal['DJF'].index[mask['DJF']])
+    df_seasonal_fft['MAM'] = pd.DataFrame({'DJF':smooth_fft(df_seasonal['MAM'].values[mask['MAM']], nfft)}, index=df_seasonal['MAM'].index[mask['MAM']])
+    df_seasonal_fft['JJA'] = pd.DataFrame({'DJF':smooth_fft(df_seasonal['JJA'].values[mask['JJA']], nfft)}, index=df_seasonal['JJA'].index[mask['JJA']])
+    df_seasonal_fft['SON'] = pd.DataFrame({'DJF':smooth_fft(df_seasonal['SON'].values[mask['SON']], nfft)}, index=df_seasonal['SON'].index[mask['SON']])
+    df_seasonal_fft['ONDJFM'] = pd.DataFrame({'ONDJFM':smooth_fft(df_seasonal['ONDJFM'].values[mask['ONDJFM']], nfft)}, index=df_seasonal['ONDJFM'].index[mask['ONDJFM']])
+    df_seasonal_fft['AMJJAS'] = pd.DataFrame({'AMJJAS':smooth_fft(df_seasonal['AMJJAS'].values[mask['AMJJAS']], nfft)}, index=df_seasonal['AMJJAS'].index[mask['AMJJAS']])                
                 
-    mask = np.isfinite(df_seasonal_fft)
     data = []
     trace_winter=[
             go.Scatter(                                  
-                x=df_seasonal_fft.index[mask['DJF']], y=df_seasonal_fft['DJF'][mask['DJF']], 
+                x=df_seasonal_fft.index, y=df_seasonal_fft['DJF'], 
                 mode='lines+markers', 
-                line=dict(width=3, color='black'),
-                marker=dict(size=7, symbol='square', opacity=1.0, color='blue', line_width=1, line_color='black'),                       
+                line=dict(width=3, color='blue'),
+                marker=dict(size=7, symbol='square', opacity=0.5, color='blue', line_width=1, line_color='black'),                       
                 name='DJF')
     ]
     trace_spring=[
             go.Scatter(                                  
-                x=df_seasonal_fft.index[mask['MAM']], y=df_seasonal_fft['MAM'][mask['MAM']], 
+                x=df_seasonal_fft.index, y=df_seasonal_fft['MAM'], 
                 mode='lines+markers', 
-                line=dict(width=3, color='black'),
-                marker=dict(size=7, symbol='square', opacity=1.0, color='red', line_width=1, line_color='black'),       
+                line=dict(width=3, color='red'),
+                marker=dict(size=7, symbol='square', opacity=0.5, color='red', line_width=1, line_color='black'),       
                 name='MAM')
     ]
     trace_summer=[
             go.Scatter(                                  
-                x=df_seasonal_fft.index[mask['JJA']], y=df_seasonal_fft['JJA'][mask['JJA']], 
+                x=df_seasonal_fft.index, y=df_seasonal_fft['JJA'], 
                 mode='lines+markers', 
-                line=dict(width=3, color='black'),
-                marker=dict(size=7, symbol='square', opacity=1.0, color='purple', line_width=1, line_color='black'),       
+                line=dict(width=3, color='purple'),
+                marker=dict(size=7, symbol='square', opacity=0.5, color='purple', line_width=1, line_color='black'),       
                 name='JJA')
     ]
     trace_autumn=[
             go.Scatter(                                  
-                x=df_seasonal_fft.index[mask['SON']], y=df_seasonal_fft['SON'][mask['SON']], 
+                x=df_seasonal_fft.index, y=df_seasonal_fft['SON'], 
                 mode='lines+markers', 
-                line=dict(width=3, color='black'),
-                marker=dict(size=7, symbol='square', opacity=1.0, color='green', line_width=1, line_color='black'),       
+                line=dict(width=3, color='green'),
+                marker=dict(size=7, symbol='square', opacity=0.5, color='green', line_width=1, line_color='black'),       
                 name='SON')
     ]
     data = data + trace_winter + trace_spring + trace_summer + trace_autumn
@@ -606,7 +604,7 @@ def update_plot_seasons(value,trim):
     fig.update_layout(
         template = "plotly_dark",
 #       template = None,
-        xaxis = dict(range=[dates[0],dates[-1]]),       
+        xaxis = dict(range=[df_seasonal.index[0],df_seasonal.index[-1]]),       
         xaxis_title = {'text': 'Year'},
         yaxis_title = {'text': 'Anomaly (from 1961-1990), °C'},
         title = {'text': 'SEASONAL DECADAL MEAN', 'x':0.1, 'y':0.95},
@@ -616,7 +614,7 @@ def update_plot_seasons(value,trim):
         fig.update_layout(
             annotations=[
                 dict(
-                    x=dates[np.floor(len(dates)/2).astype(int)],
+                    x=df_seasonal.index[np.floor(len(df_seasonal)/2).astype(int)],
                     y=0,
                     xref="x",
                     yref="y",
@@ -630,13 +628,14 @@ def update_plot_seasons(value,trim):
                 )
             ]
         )    
-    fig.update_layout(legend=dict(
-        orientation='v',
-        yanchor="top",
-        y=0.4,
-        xanchor="left",
-        x=0.8),
-    )    
+    fig.update_layout(
+        legend=dict(
+            orientation='h',
+            yanchor="top",
+            y=0.1,
+            xanchor="left",
+            x=0.05),              
+    )      
     fig.update_layout(height=400, width=550, margin={"r":10,"t":50,"l":70,"b":50})    
 
     return fig
@@ -747,7 +746,7 @@ def update_plot_climatology(value,trim):
                        mode='lines', 
                        fill='tonexty',
                        line=dict(width=1.0, color='lightgrey'),
-                       name='5-95% range',      
+                       name='5-95%',      
                        showlegend=True),
             go.Scatter(x=np.arange(1,13), y=np.array(df['p5'].astype(float)), 
                        mode='lines', 
@@ -787,7 +786,7 @@ def update_plot_climatology(value,trim):
         go.Scatter(                      
             x=np.arange(1,13), y=df['normal'], mode='lines', 
             line=dict(width=3, color='white'),
-            name='1961-1990 normal')
+            name='1961-1990')
     ]
     data = data + trace_median
     trace_latest=[
@@ -808,7 +807,15 @@ def update_plot_climatology(value,trim):
         xaxis_title = {'text': 'Month'},
         yaxis_title = {'text': 'Monthly temperature, °C'},
         title = {'text': 'CLIMATOLOGY', 'x':0.1, 'y':0.95},        
-    )
+    )    
+    fig.update_layout(
+        legend=dict(
+            orientation='h',
+            yanchor="top",
+            y=0.1,
+            xanchor="left",
+            x=0.05),              
+    )        
     fig.update_layout(height=400, width=550, margin={"r":10,"t":50,"l":10,"b":50})
     
     return fig
@@ -895,7 +902,7 @@ def update_plot_ranks(value,trim):
                 x=dates_ranked, y=[], 
                 mode='lines+markers', 
                 line=dict(width=1, color='black'),
-                marker=dict(size=2, symbol='square', opacity=1.0, color=ts_yearly_normed, colorscale='RdBu_r', line_width=1, line_color='black'),                  
+                marker=dict(size=2, symbol='square', opacity=0.5, color=ts_yearly_normed, colorscale='RdBu_r', line_width=1, line_color='black'),                  
                 name='Yearly mean',
             )
         ]
@@ -929,13 +936,14 @@ def update_plot_ranks(value,trim):
         title = {'text': 'YEAR RANK', 'x':0.1, 'y':0.95},        
     )
     fig.update_xaxes(showticklabels = False) # hide all the xticks        
-    fig.update_layout(legend=dict(
-        orientation='v',
-        yanchor="top",
-        y=0.3,
-        xanchor="left",
-        x=0.1),
-    )
+    fig.update_layout(
+        legend=dict(
+            orientation='h',
+            yanchor="top",
+            y=0.1,
+            xanchor="left",
+            x=0.05),              
+    )    
     if mask.sum() == 0:
         fig.update_layout(
             annotations=[
