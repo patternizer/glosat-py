@@ -2,7 +2,7 @@
 
 # glosat-py
 
-Experimental station viewer Plotly Python Dash app for inspecting GloSAT.p03 land surface air temperature data. Part of ongoing work for the [GloSAT Project](https://www.glosat.org):
+Experimental station viewer Plotly Python Dash app for inspecting GloSAT.p04 land surface air temperature data. Part of ongoing work for the [GloSAT Project](https://www.glosat.org):
 
 * station info (lat, lon, elevation and WMO metadata)
 * station location on zoomable OpenStreetmap
@@ -12,7 +12,7 @@ Experimental station viewer Plotly Python Dash app for inspecting GloSAT.p03 lan
 * station anomalies ranked by year
 * station monthly climatology of absolute temperature
 * station inspector app
-* python reader for GloSAT.p0x station database in Pandas pickle format
+* python reader for GloSAT.p04 station database in Pandas pickle format
 
 [Experimental version](https://glosat-py.herokuapp.com/) available for issue-checking. 
 
@@ -34,7 +34,7 @@ The first step is to clone the latest glosat-py code and step into the check out
 ### Using Standard Python
 
 The code should run with the [standard CPython](https://www.python.org/downloads/) installation and was tested 
-in a conda virtual environment running a 64-bit version of Python 3.8.3.
+in a conda virtual environment running a 64-bit version of Python 3.8.12.
 
 The glosat-py app instance can be run locally at [localhost](http://127.0.0.1:8050/) by calling:
 

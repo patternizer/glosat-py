@@ -1,8 +1,8 @@
 #------------------------------------------------------------------------------
 # PROGRAM: glosat.py
 #------------------------------------------------------------------------------
-# Version 0.15
-# 22 August, 2021
+# Version 0.16
+# 17 January, 2022
 # Michael Taylor
 # https://patternizer.github.io
 # michael DOT a DOT taylor AT uea DOT ac DOT uk
@@ -175,7 +175,7 @@ layout = html.Div([
                 html.Br(),
                 html.Label(['Status: Experimental']),
                 html.Br(),
-                html.Label(['Dataset: GloSAT.p03']),
+                html.Label(['Dataset: GloSAT.p04']),
                 html.Br(),
                 html.Label(['Codebase: ', html.A('Github', href='https://github.com/patternizer/glosat-py')]),                
             ],
