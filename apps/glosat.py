@@ -257,7 +257,7 @@ def update_plot_worldmap(value):
     station = df_temp[df_temp['stationcode']==df_temp['stationcode'].unique()[value]]['stationcode'].iloc[0].upper()
         
     fig = go.Figure(
-        px.scatter_mapbox(lat=lat, lon=lon, color_discrete_sequence=["red"], zoom=5))
+        px.scatter_mapbox(lat=lat, lon=lon, color_discrete_sequence=["red"], zoom=2))
     fig.update_layout(
         template = "plotly_dark",
 #       template = None,
