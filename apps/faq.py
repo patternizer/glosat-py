@@ -20,7 +20,7 @@ layout = html.Div([
 
         html.H5(children='FAQ #1: First Reliable Years', className="text-left"),
         html.Br(),
-        html.P(['In the app, there is a radio button for switching between the raw station monthly mean temperatures and data trimmed to the first reliable year (FRY) where expert opinion judges them to be reliably homogenised by the relevant national meteorological agency. In the majority of cases this coincides with the start of the series of processed observations. The landing page of this app displays the global distribution of stations available in the current version of the GloSAT.p0x data archive (many thanks to ', html.A('Emily Wallis', style={'color':'cyan'}), ' for kindly preparing this plot).']),                                        
+        html.P(['In the app, the raw station monthly mean temperatures data for the GloSAT period 1781-2021 are trimmed at the station level to the first reliable year (FRY) where expert opinion judges them to be reliably homogenised by the relevant national meteorological agency. In the majority of cases this coincides with the start of the series of processed observations. The landing page of this app displays the global distribution of stations available in the GloSAT.p02 data archive (many thanks to ', html.A('Emily Wallis', style={'color':'cyan'}), ' for kindly preparing this plot).']),                                        
         html.Br(),
 
         html.H5(children='FAQ #2: Climate Stripes', className="text-left"),
