@@ -1,8 +1,8 @@
 #------------------------------------------------------------------------------
 # PROGRAM: glosat.py
 #------------------------------------------------------------------------------
-# Version 0.16
-# 17 January, 2022
+# Version 0.17
+# 7 April, 2022
 # Michael Taylor
 # https://patternizer.github.io
 # michael DOT a DOT taylor AT uea DOT ac DOT uk
@@ -63,8 +63,6 @@ nsmooth = 60                 # 5yr MA monthly
 nfft = 16                    # power of 2 for the DFT
 w = 10                       # decadal seasonal means 
 
-#df_temp = pd.read_csv('df_temp.csv', index_col=0)
-#df_anom = pd.read_csv('df_anom.csv', index_col=0)
 df_temp = pd.read_pickle('df_temp.pkl', compression='bz2')
 df_anom = pd.read_pickle('df_anom.pkl', compression='bz2')
 
@@ -103,26 +101,11 @@ layout = html.Div([
             ], className="dash-bootstrap"), 
             width=4, 
             ),             
-            dbc.Col(html.Div([
-                html.Br(),
-                dcc.RadioItems(
-                    id = "radio-fry",
-                    options=[
-                        {'label': ' FRY', 'value': 'On'},
-                        {'label': ' Raw', 'value': 'Off'},
-                    ],
-                    value = 'On',
-                    labelStyle={'padding' : '5px', 'display': 'inline-block'},
-                ),
-            ]), 
-            width=2, 
-            ),                             
             dbc.Col( html.Div([
                 dcc.Graph(id="station-info", style = {'padding' : '10px', 'width': '100%', 'display': 'inline-block'}), 
             ]), 
             width={'size':6}, 
-            ),               
-            
+            ),                           
         ]),
 
         dbc.Row([
@@ -222,8 +205,6 @@ def update_station_info(value):
                     [station], 
                     [country], 
                 ],
-#               line_color='darkslategray',
-#               fill_color='white',
                 line_color='slategray',
                 fill_color='black',
                 font = dict(color='white'),
@@ -260,7 +241,6 @@ def update_plot_worldmap(value):
         px.scatter_mapbox(lat=lat, lon=lon, color_discrete_sequence=["red"], zoom=2))
     fig.update_layout(
         template = "plotly_dark",
-#       template = None,
         xaxis_title = {'text': 'Longitude, °E'},
         yaxis_title = {'text': 'Latitude, °N'},
         title = {'text': 'LOCATION', 'x':0.1, 'y':0.95},        
@@ -269,32 +249,25 @@ def update_plot_worldmap(value):
 #   fig.update_layout(mapbox_style="stamen-watercolor", mapbox_center_lat=lat, mapbox_center_lon=lon) 
 #   fig.update_layout(mapbox_style="stamen-terrain", mapbox_center_lat=lat[0], mapbox_center_lon=lon 
     fig.update_layout(mapbox_style="open-street-map", mapbox_center_lat=lat[0], mapbox_center_lon=lon[0]) 
-#    fig.update_layout(title={'text': 'LOCATION', 'x':0.1, 'y':0.95, 'xanchor': 'left', 'yanchor': 'top'})    
     fig.update_layout(height=400, width=550, margin={"r":10,"t":50,"l":10,"b":40})    
     
     return fig
 
 @app.callback(
     Output(component_id='plot-stripes', component_property='figure'),
-    [Input(component_id='station', component_property='value'),
-    Input(component_id='radio-fry', component_property='value')],         
+    [Input(component_id='station', component_property='value')],         
     )
 
-def update_plot_stripes(value,trim):
+def update_plot_stripes(value):
     
     """
     Plot station stripes
     https://showyourstripes.info/
     """
 
-    # value = np.where(df_temp['stationcode'].unique()=='545110')[0][0] # Beijing
-    # value = np.where(df_anom['stationcode'].unique()=='024580')[0][0] # Uppsala-Flygplats
-
-    if trim == 'On':
-        fry = df_temp[df_temp['stationcode']==df_temp['stationcode'].unique()[value]]['stationfirstreliable'].unique()
-        da = df_temp[ (df_temp['year']>=fry[0]) & (df_temp['stationcode']==df_temp['stationcode'].unique()[value]) ].iloc[:,range(0,13)]
-    elif trim == 'Off':   
-        da = df_temp[df_temp['stationcode']==df_temp['stationcode'].unique()[value]].iloc[:,range(0,13)]
+    trim = 'Off'
+    
+    da = df_temp[df_temp['stationcode']==df_temp['stationcode'].unique()[value]].iloc[:,range(0,13)]
 
     ts_yearly = np.mean(np.array(da.groupby('year').mean().iloc[:,0:12]),axis=1) 
 #   ts_yearly = np.nanmean(np.array(da.groupby('year').mean().iloc[:,0:12]),axis=1) 
@@ -312,22 +285,6 @@ def update_plot_stripes(value,trim):
     ts_yearly_ptp = ts_yearly[mask].ptp()
     ts_yearly_normed = ((ts_yearly - ts_yearly_min) / ts_yearly_ptp)             
     ts_ones = np.full(n,1)
-
-    # TEST: df_temp ts_yearly_normed versus df_anom ts_yearly_normed
-    
-#    da2 = df_anom[df_anom['stationcode']==df_anom['stationcode'].unique()[value]].iloc[:,range(0,13)]
-#    ts_yearly2 = np.mean(np.array(da2.groupby('year').mean().iloc[:,0:12]),axis=1)
-#    mask2 = np.isfinite(ts_yearly2)
-#    ts_yearly_min2 = ts_yearly2[mask].min()    
-#    ts_yearly_max2 = ts_yearly2[mask].max()    
-#    ts_yearly_ptp2 = ts_yearly2[mask].ptp()
-#    ts_yearly_normed2 = ((ts_yearly2 - ts_yearly_min2) / ts_yearly_ptp2)             
-
-#    plt.plot(t_yearly,ts_yearly)
-#    plt.plot(t_yearly,ts_yearly2)
-#    plt.plot(t_yearly,ts_yearly_normed)
-#    plt.scatter(x=np.array(t_yearly),y=ts_yearly_normed2,marker='.', color='orange')
-
     #--------------------------------------------------------------------------
         
     data = []
@@ -349,25 +306,17 @@ def update_plot_stripes(value,trim):
         ),
     ]
     data = data + trace_stripes + trace_series
-#    data = data + trace_stripes
     
     fig = go.Figure(data)
     fig.update_layout(
         template = "plotly_dark",
-#       template = None,
         xaxis_title = {'text': 'Year'},
         yaxis_title = {'text': 'Annual anomaly (from 1961-1990), °C'},        
         xaxis = dict(
             range = [t_yearly[0], t_yearly[-1]],
-#            showgrid = False, # thin lines in the background
-#            zeroline = False, # thick line at x=0
-#            visible = True,   # numbers below
         ), 
         yaxis = dict(
             range = [0, 1],
-#            showgrid = False, # thin lines in the background
-#            zeroline = False, # thick line at x=0
-#            visible = True,   # numbers below
         ), 
         title = {'text': 'CLIMATE STRIPES', 'x':0.1, 'y':0.95},
         showlegend = False,    
@@ -386,24 +335,16 @@ def update_plot_stripes(value,trim):
 
 @app.callback(
     Output(component_id='plot-timeseries', component_property='figure'),
-    [Input(component_id='station', component_property='value'),    
-    Input(component_id='radio-fry', component_property='value')],    
+    [Input(component_id='station', component_property='value')],    
     )
     
-def update_plot_timeseries(value,trim):
+def update_plot_timeseries(value):
     
     """
     Plot station timeseries
     """
 
-    # value = np.where(df_temp['stationcode'].unique()=='545110')[0][0] # Beijing
-    # value = np.where(df_anom['stationcode'].unique()=='024580')[0][0] # Uppsala-Flygplats
-
-    if trim == 'On':
-        fry = df_anom[df_anom['stationcode']==df_anom['stationcode'].unique()[value]]['stationfirstreliable'].unique()
-        da = df_anom[ (df_anom['year']>=fry[0]) & (df_anom['stationcode']==df_anom['stationcode'].unique()[value]) ].iloc[:,range(0,13)]
-    elif trim == 'Off':   
-        da = df_anom[df_anom['stationcode']==df_anom['stationcode'].unique()[value]].iloc[:,range(0,13)]
+    da = df_anom[df_anom['stationcode']==df_anom['stationcode'].unique()[value]].iloc[:,range(0,13)]
 
     ts_monthly = []    
     for i in range(len(da)):            
@@ -414,13 +355,8 @@ def update_plot_timeseries(value,trim):
     # Solve Y1677-Y2262 Pandas bug with Xarray:        
     # t_monthly = pd.date_range(start=str(da['year'].iloc[0]), periods=len(ts_monthly), freq='M')                  
     t_monthly = xr.cftime_range(start=str(da['year'].iloc[0]), periods=len(ts_monthly), freq='M', calendar='noleap')     
-
     ts_yearly = np.mean(np.array(da.groupby('year').mean().iloc[:,0:12]),axis=1) 
     ts_yearly_sd = np.std(np.array(da.groupby('year').mean().iloc[:,0:12]),axis=1)                    
-#   ts_yearly = np.nanmean(np.array(da.groupby('year').mean().iloc[:,0:12]),axis=1) 
-#   ts_yearly_sd = np.nanstd(np.array(da.groupby('year').mean().iloc[:,0:12]),axis=1)                    
-    # Solve Y1677-Y2262 Pandas bug with Xarray:       
-    # t_yearly = pd.date_range(start=str(da['year'].iloc[0]), periods=len(ts_yearly), freq='A')   
     t_yearly = xr.cftime_range(start=str(da['year'].iloc[0]), periods=len(ts_yearly), freq='A', calendar='noleap')   
 
     n = len(ts_yearly)
@@ -520,21 +456,16 @@ def update_plot_timeseries(value,trim):
 
 @app.callback(
     Output(component_id='plot-seasons', component_property='figure'),
-    [Input(component_id='station', component_property='value'),    
-    Input(component_id='radio-fry', component_property='value')],    
+    [Input(component_id='station', component_property='value')],    
     )
     
-def update_plot_seasons(value,trim):
+def update_plot_seasons(value):
     
     """
     Plot station seasonal timeseries
     """
 
-    if trim == 'On':
-        fry = df_anom[df_anom['stationcode']==df_anom['stationcode'].unique()[value]]['stationfirstreliable'].unique()
-        da = df_anom[ (df_anom['year']>=fry[0]) & (df_anom['stationcode']==df_anom['stationcode'].unique()[value]) ].iloc[:,range(0,13)]
-    elif trim == 'Off':   
-        da = df_anom[df_anom['stationcode']==df_anom['stationcode'].unique()[value]].iloc[:,range(0,13)]
+    da = df_anom[df_anom['stationcode']==df_anom['stationcode'].unique()[value]].iloc[:,range(0,13)]
 
     # TRIM: to 1678 to work-around Pandas datetime limit
 
@@ -642,25 +573,16 @@ def update_plot_seasons(value,trim):
 
 @app.callback(
     Output(component_id='plot-climatology', component_property='figure'),
-    [Input(component_id='station', component_property='value'),
-    Input(component_id='radio-fry', component_property='value')],              
+    [Input(component_id='station', component_property='value')],              
     )
 
-def update_plot_climatology(value,trim):
+def update_plot_climatology(value):
     
     """
     Plot station climatology
     """
 
-    # find drop-down index for Beijing
-    # value = np.where(df_temp['stationcode'].unique()=='545110')[0][0]
-
-    if trim == 'On':
-        fry = df_temp[df_temp['stationcode']==df_temp['stationcode'].unique()[value]]['stationfirstreliable'].unique()
-        da = df_temp[ (df_temp['year']>=fry[0]) & (df_temp['stationcode']==df_temp['stationcode'].unique()[value]) ].iloc[:,range(0,13)]
-    elif trim == 'Off':   
-        da = df_temp[df_temp['stationcode']==df_temp['stationcode'].unique()[value]].iloc[:,range(0,13)]
-
+    da = df_temp[df_temp['stationcode']==df_temp['stationcode'].unique()[value]].iloc[:,range(0,13)]
     X = da.iloc[:,0]
     Y = da.iloc[:,range(1,13)]
 
@@ -671,8 +593,6 @@ def update_plot_climatology(value,trim):
     # Solve Y1677-Y2262 Pandas bug with Xarray:       
     # t_yearly = pd.date_range(start=str(da['year'].iloc[0]), periods=len(ts_yearly), freq='A')   
     t_yearly = xr.cftime_range(start=str(da['year'].iloc[0]), periods=len(ts_yearly), freq='A', calendar='noleap')   
-
-    # Climate Stripes Colourmap
 
     mask = np.isfinite(ts_yearly)
     ts_yearly_min = ts_yearly[mask].min()    
@@ -691,11 +611,6 @@ def update_plot_climatology(value,trim):
     noise = np.random.normal(0,1,n)/1e6
     ts_yearly_normed_whitened = ts_yearly_normed + noise
 
-    # fig,ax = plt.subplots()
-    # plt.plot(t_yearly, ts_yearly_normed)
-    # plt.scatter(np.array(t_yearly), ts_yearly_normed_whitened, c=ts_yearly_normed_whitened, cmap='RdBu_r', marker='o')
-
-#   colors = cmocean.cm.balance(np.linspace(0.05,0.95,n)) 
     colors = cmocean.cm.rain(np.linspace(0.05,0.95,n)) 
     hexcolors = [ "#{:02x}{:02x}{:02x}".format(int(colors[i][0]*255),int(colors[i][1]*255),int(colors[i][2]*255)) for i in range(len(colors)) ]
     mapidx = ts_yearly_normed_whitened.argsort()
@@ -707,7 +622,6 @@ def update_plot_climatology(value,trim):
     for j in range(1,13):
 
         y = da[str(j)]
-    #   z = (y-y.mean())/y.std()
         z = y[np.isfinite(y)]
         disttype = 'gamma'
         dist = getattr(scipy.stats, disttype)
@@ -729,11 +643,6 @@ def update_plot_climatology(value,trim):
         df['p10'][j] = gamma_10_90[0]
         df['p90'][j] = gamma_10_90[1]
     
-        # p10extremes = z < gamma_bins[10]
-        # p90extremes = z > gamma_bins[90]
-        # p10extremes_frac = p10extremes.sum()/n
-        # p90extremes_frac = p90extremes.sum()/n
-
     data = []
     trace_9_95 = [        
             go.Scatter(x=np.arange(1,13), y=np.array(df['p95'].astype(float)), 
@@ -803,7 +712,6 @@ def update_plot_climatology(value,trim):
     fig = go.Figure(data)
     fig.update_layout(
         template = "plotly_dark",
-#       template = None,
         xaxis_title = {'text': 'Month'},
         yaxis_title = {'text': 'Monthly temperature, °C'},
         title = {'text': 'CLIMATOLOGY', 'x':0.1, 'y':0.95},        
@@ -822,25 +730,16 @@ def update_plot_climatology(value,trim):
 
 @app.callback(
     Output(component_id='plot-ranks', component_property='figure'),
-    [Input(component_id='station', component_property='value'),
-    Input(component_id='radio-fry', component_property='value')],              
+    [Input(component_id='station', component_property='value')],              
     )
 
-def update_plot_ranks(value,trim):
+def update_plot_ranks(value):
     
     """
     Plot station year rank anomaly distribution
     """
 
-    # value = np.where(df_temp['stationcode'].unique()=='545110')[0][0] # Beijing
-    # value = np.where(df_anom['stationcode'].unique()=='024580')[0][0] # Uppsala-Flygplats
-    
-    if trim == 'On':
-        fry = df_anom[df_anom['stationcode']==df_anom['stationcode'].unique()[value]]['stationfirstreliable'].unique()
-        da = df_anom[ (df_anom['year']>=fry[0]) & (df_anom['stationcode']==df_anom['stationcode'].unique()[value]) ].iloc[:,range(0,13)]
-    elif trim == 'Off':   
-        da = df_anom[df_anom['stationcode']==df_anom['stationcode'].unique()[value]].iloc[:,range(0,13)]
-#       da = df_temp[df_temp['stationcode']==df_temp['stationcode'].unique()[value]].iloc[:,range(0,13)]
+    da = df_anom[df_anom['stationcode']==df_anom['stationcode'].unique()[value]].iloc[:,range(0,13)]
 
     # Climate Stripes Colourmap
 
@@ -852,17 +751,6 @@ def update_plot_ranks(value,trim):
     # Solve Y1677-Y2262 Pandas bug with Xarray:       
     # t_yearly = pd.date_range(start=str(da['year'].iloc[0]), periods=len(ts_yearly), freq='A')   
     t_yearly = xr.cftime_range(start=str(da['year'].iloc[0]), periods=len(ts_yearly), freq='A', calendar='noleap')   
-
-    # Climate Stripes Colourmap
-
-#    mask = np.isfinite(ts_yearly)
-#    ts_yearly_min = ts_yearly[mask].min()    
-#    ts_yearly_max = ts_yearly[mask].max()    
-#    ts_yearly_ptp = ts_yearly[mask].ptp()
-#    ts_yearly_normed = ((ts_yearly[mask] - ts_yearly_min) / ts_yearly_ptp)             
-#    ts_yearly = ts_yearly[mask]
-#    ts_yearly_sd = ts_yearly_sd[mask]
-#    t_yearly = da['year'][mask]    
 
     # Add miniscule (1e-6) white noise to fix duplicates in colour mapping
 
@@ -914,7 +802,6 @@ def update_plot_ranks(value,trim):
     
         data=[
             go.Bar(y=2*e, x=dates_ranked, base=y-e,
-    #       go.Bar(y=e_iqr, x=dates_ranked, base=e_Q1,
                    marker = dict(color = ts_yearly_normed, colorscale='RdBu_r', line_width=0),  
                    name = 'Yearly SD',  
             ),
@@ -930,7 +817,6 @@ def update_plot_ranks(value,trim):
     fig = go.Figure(data)
     fig.update_layout(
         template = "plotly_dark",
-#       template = None,
         xaxis=dict(title='Rank', type='category'),         
         yaxis_title = {'text': 'Anomaly (from 1961-1990), °C'},
         title = {'text': 'YEAR RANK', 'x':0.1, 'y':0.95},        
@@ -968,22 +854,17 @@ def update_plot_ranks(value,trim):
 
 @app.callback(
     Output(component_id='plot-spiral', component_property='figure'),
-    [Input(component_id='station', component_property='value'),    
-    Input(component_id='radio-fry', component_property='value')],              
+    [Input(component_id='station', component_property='value')],              
     )
 
-def update_plot_spiral(value,trim):
+def update_plot_spiral(value):
     
     """
     Plot station climate spiral of monthly or yearly mean anomaly from min:
     # http://www.climate-lab-book.ac.uk/spirals/    
     """
-    
-    if trim == 'On':
-        fry = df_anom[df_anom['stationcode']==df_anom['stationcode'].unique()[value]]['stationfirstreliable'].unique()
-        da = df_anom[ (df_anom['year']>=fry[0]) & (df_anom['stationcode']==df_anom['stationcode'].unique()[value]) ].iloc[:,range(0,13)]
-    elif trim == 'Off':   
-        da = df_anom[df_anom['stationcode']==df_anom['stationcode'].unique()[value]].iloc[:,range(0,13)]
+
+    da = df_anom[df_anom['stationcode']==df_anom['stationcode'].unique()[value]].iloc[:,range(0,13)]
 
     ts_yearly = np.mean(np.array(da.groupby('year').mean().iloc[:,0:12]),axis=1) 
 
@@ -1020,20 +901,14 @@ def update_plot_spiral(value,trim):
 
     
     data = []
-#   for k in range(n-1):
     for k in range(n):
 
         trace=[go.Scatterpolar(              
             r = np.tile(Y[k],12),      
-#           r = np.tile(ts_yearly[k],12),      
-            # theta = np.linspace(0, 2*np.pi, 12),
             theta = np.linspace(0, 360, 12),
             mode = 'lines', 
             line = dict(width=1, color=hexcolors[k]),
             name = X[k],
-#           name = str(t_yearly[k]),
-#           fill = 'toself',
-#           fillcolor = hexcolors[k],
             showlegend=False,
             ),
         ]
