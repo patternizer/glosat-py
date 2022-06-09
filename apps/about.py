@@ -170,8 +170,12 @@ layout = html.Div([
             ]
         ),
 
-        dbc.CardDeck(
-            [             
+        html.Br(),
+              
+        dbc.Row([     
+            dbc.Col(
+            
+                       
             dbc.Card(children=[html.H4(children='License', className="text-center"), 
                 html.P(html.Br()),                               
                 html.P("© UEA all rights reserved"),
@@ -179,7 +183,11 @@ layout = html.Div([
                 html.P('This website has been created for the GloSAT Project and does not use privately hosted web-analytics tools, does not store cookies and respects do not track settings.'),
                 html.P('For further information please refer to the UEA privacy policy.'),                    
                 dbc.Button("UEA Privacy Policy", href="https://www.uea.ac.uk/about/university-information/statutory-legal-policies", color="primary", className="mt-2"),
-                ], body=True, color="dark", outline=True),                 
+                ], body=True, color="dark", outline=True),  
+                
+		),
+            dbc.Col(
+                               
             dbc.Card(children=[html.H4(children='Contact', className="text-center"),
                 html.P(html.Br()),                               
                 html.P('For any enquiries please contact:'),
@@ -192,7 +200,10 @@ layout = html.Div([
                 html.P(html.Br()),
                 html.A('Telephone: +44 (0) 1603 592542'),
                 html.A('Email: cru@uea.ac.uk'),
-                ], body=True, color="dark", outline=True),                 
+                ], body=True, color="dark", outline=True),    
+
+		),
+                
             ], className="mb-2"),
 
     ], className="mb-2"),
