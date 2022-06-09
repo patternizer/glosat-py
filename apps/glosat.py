@@ -79,8 +79,8 @@ def smooth_fft(x, span):
 # LOAD: absolute temperature and anomaly dataframes
 #------------------------------------------------------------------------------
 
-df_temp = pd.read_pickle('df_temp.pkl', compression='bz2')
-df_anom = pd.read_pickle('df_anom.pkl', compression='bz2')
+df_temp = pd.read_pickle('df_temp_app.pkl', compression='bz2')
+df_anom = pd.read_pickle('df_anom_app.pkl', compression='bz2')
 
 #------------------------------------------------------------------------------
 # CONVERT: stationelevation to string and replace empty with 'unknown'
