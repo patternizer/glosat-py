@@ -42,7 +42,7 @@ navbar = dbc.Navbar(
                         dbc.Col(dbc.NavbarBrand("Station Viewer", className="ml-2")),
                     ],
                     align="center",
-                    no_gutters=False,
+                    className="g-0",
                 ),
                 href="/home",
             ),
