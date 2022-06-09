@@ -11,7 +11,7 @@
 
 # Numerics and dataframe libraries:
 import numpy as np
-import numpy.ma as ma
+#import numpy.ma as ma
 import scipy
 import scipy.stats as stats    
 import pandas as pd
@@ -21,25 +21,25 @@ import pickle
 import matplotlib
 import matplotlib.pyplot as plt; plt.close('all')
 import matplotlib.cm as cm
-import matplotlib.colors as c
-from matplotlib.colors import Normalize
-from matplotlib import colors as mcol
-from matplotlib.cm import ScalarMappable
+#import matplotlib.colors as c
+#from matplotlib.colors import Normalize
+#from matplotlib import colors as mcol
+#from matplotlib.cm import ScalarMappable
 from pandas.plotting import register_matplotlib_converters
 register_matplotlib_converters()
 matplotlib.rcParams['text.usetex'] = False
-import matplotlib.dates as mdates
-import matplotlib.colors as mcolors
-import matplotlib.ticker as mticker
-from matplotlib.collections import PolyCollection
-from mpl_toolkits import mplot3d
-from mpl_toolkits.mplot3d import Axes3D
-from mpl_toolkits.mplot3d import proj3d
+#import matplotlib.dates as mdates
+#import matplotlib.colors as mcolors
+#import matplotlib.ticker as mticker
+#from matplotlib.collections import PolyCollection
+#from mpl_toolkits import mplot3d
+#from mpl_toolkits.mplot3d import Axes3D
+#from mpl_toolkits.mplot3d import proj3d
 import cmocean
 # Plotly libraries
 import plotly.express as px
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
+#from plotly.subplots import make_subplots
 # App Deployment Libraries
 import dash
 import dash_core_components as dcc
