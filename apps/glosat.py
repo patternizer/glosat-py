@@ -55,6 +55,7 @@ import filter_cru_dft as cru # CRU DFT filter
 #------------------------------------------------------------------------------
 # SETTINGS: 
 #------------------------------------------------------------------------------
+
 fontsize = 12
 
 # Seasonal mean parameters
@@ -62,15 +63,6 @@ fontsize = 12
 nsmooth = 60                 # 5yr MA monthly
 nfft = 16                    # power of 2 for the DFT
 w = 10                       # decadal seasonal means 
-
-df_temp = pd.read_pickle('df_temp.pkl', compression='bz2')
-df_anom = pd.read_pickle('df_anom.pkl', compression='bz2')
-
-gb = df_temp.groupby(['stationcode'])['stationname'].unique().reset_index()
-stationcodestr = gb['stationcode']
-stationnamestr = gb['stationname'].apply(', '.join).str.lower()
-stationstr = stationcodestr + ': ' + stationnamestr
-opts = [{'label' : stationstr[i], 'value' : i} for i in range(len(stationstr))]
 
 #------------------------------------------------------------------------------
 # METHODS: 
@@ -82,6 +74,31 @@ def smooth_fft(x, span):
     x_filtered = y_lo
 
     return x_filtered
+
+#------------------------------------------------------------------------------
+# LOAD: absolute temperature and anomaly dataframes
+#------------------------------------------------------------------------------
+
+df_temp = pd.read_pickle('df_temp.pkl', compression='bz2')
+df_anom = pd.read_pickle('df_anom.pkl', compression='bz2')
+
+#------------------------------------------------------------------------------
+# CONVERT: stationelevation to string and replace empty with 'unknown'
+#------------------------------------------------------------------------------
+
+mask = ~np.isfinite( df_temp['stationelevation'] )
+df_temp['stationelevation'] = df_temp['stationelevation'].astype(str)
+df_temp['stationelevation'].replace('nan','None')
+
+#------------------------------------------------------------------------------
+# CONSTRUCT: dropdown list
+#------------------------------------------------------------------------------
+
+gb = df_temp.groupby(['stationcode'])['stationname'].unique().reset_index()
+stationcodestr = gb['stationcode']
+stationnamestr = gb['stationname'].apply(', '.join).str.lower()
+stationstr = stationcodestr + ': ' + stationnamestr
+opts = [{'label' : stationstr[i], 'value' : i} for i in range(len(stationstr))]
 
 #------------------------------------------------------------------------------
 # GloSAT APP LAYOUT
@@ -479,14 +496,16 @@ def update_plot_seasons(value):
     t_monthly = pd.date_range(start=str(da.year.iloc[0]), periods=len(ts_monthly), freq='MS')    
     df = pd.DataFrame({'Tg':ts_monthly}, index=t_monthly)     
 
-    t = [ pd.to_datetime( str(df.index.year.unique()[i])+'-01-01') for i in range(len(df.index.year.unique())) ] # years
+    t_seasonal = [ pd.to_datetime( str(df.index.year.unique()[i])+'-01-01') for i in range(len(df.index.year.unique())) ] # years
+    
     DJF = ( df[df.index.month==12]['Tg'].values + df[df.index.month==1]['Tg'].values + df[df.index.month==2]['Tg'].values ) / 3
     MAM = ( df[df.index.month==3]['Tg'].values + df[df.index.month==4]['Tg'].values + df[df.index.month==5]['Tg'].values ) / 3
     JJA = ( df[df.index.month==6]['Tg'].values + df[df.index.month==7]['Tg'].values + df[df.index.month==8]['Tg'].values ) / 3
     SON = ( df[df.index.month==9]['Tg'].values + df[df.index.month==10]['Tg'].values + df[df.index.month==11]['Tg'].values ) / 3
     ONDJFM = ( df[df.index.month==10]['Tg'].values + df[df.index.month==11]['Tg'].values + df[df.index.month==12]['Tg'].values + df[df.index.month==1]['Tg'].values + df[df.index.month==2]['Tg'].values + df[df.index.month==3]['Tg'].values ) / 6
     AMJJAS = ( df[df.index.month==4]['Tg'].values + df[df.index.month==5]['Tg'].values + df[df.index.month==6]['Tg'].values + df[df.index.month==7]['Tg'].values + df[df.index.month==8]['Tg'].values + df[df.index.month==9]['Tg'].values ) / 6        
-    df_seasonal = pd.DataFrame({'DJF':DJF, 'MAM':MAM, 'JJA':JJA, 'SON':SON, 'ONDJFM':ONDJFM, 'AMJJAS':AMJJAS}, index = t)   
+
+    df_seasonal = pd.DataFrame({'DJF':DJF, 'MAM':MAM, 'JJA':JJA, 'SON':SON, 'ONDJFM':ONDJFM, 'AMJJAS':AMJJAS}, index = t_seasonal)   
     mask = np.isfinite(df_seasonal)           
     df_seasonal_fft = pd.DataFrame(index=df_seasonal.index)
     df_seasonal_fft['DJF'] = pd.DataFrame({'DJF':smooth_fft(df_seasonal['DJF'].values[mask['DJF']], nfft)}, index=df_seasonal['DJF'].index[mask['DJF']])
