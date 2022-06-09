@@ -7,7 +7,7 @@ dash-bootstrap-components==0.10.3
 dash-core-components==1.10.1
 dash-html-components==1.0.3
 dash-renderer==1.5.1
-dash-table==4.7.0
+dash-table==4.8.1
 Flask==1.1.2
 Flask-Compress==1.5.0
 future==0.18.2
@@ -16,7 +16,6 @@ itsdangerous==1.1.0
 Jinja2==2.11.2
 MarkupSafe==1.1.1
 matplotlib==3.2.2
-mod==0.2.4
 numpy==1.19.1
 pandas==1.1.0
 patsy==0.5.1
