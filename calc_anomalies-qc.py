@@ -26,9 +26,14 @@ import matplotlib.pyplot as plt
 # SETTINGS: 
 #------------------------------------------------------------------------------
 
-calc_anomalies = True
-save_pkl = False
+save_pkl = True # ( default = True ) 
+float64 = True  # ( detault = True ) # False --> float32
 
+if float64 == True: 
+    precision = 'float64'
+else: 
+    precision = 'float32'
+    
 filename_temp = 'df_temp_qc.pkl'
 filename_normals = 'df_normals_qc.pkl'
 filename_anomalies = 'df_anom_qc.pkl'
@@ -70,7 +75,7 @@ for i in range(len(counts)):
     if i % 100 == 0: print( i )
 
     b = np.tile( normals[i,:], [ counts[i], 1 ] )            
-    if i = 0:
+    if i == 0:
         normals_repeated = b        
     else:
         a = normals_repeated
@@ -80,13 +85,13 @@ for i in range(len(counts)):
 
 df_anom = df_temp.copy()
 A = np.array( df_anom.iloc[:,1:13] )
-B = np.array( normals_repeated[1:,:] ).astype(dtype='float32')
-C = np.array( A - B ).astype(dtype='float32')
+B = np.array( normals_repeated ).astype( dtype = precision)
+C = np.array( A - B ).astype( dtype = precision)
 
 # STORE: anomalies
 
 df_anom.iloc[:,1:13] = C
-for i in range(1,13): df_anom[str(i)] = df_anom[str(i)].astype(dtype='float32')
+for i in range(1,13): df_anom[str(i)] = df_anom[str(i)].astype( dtype = precision)
                      
 #------------------------------------------------------------------------------
 # SAVE: anomalies
@@ -94,11 +99,10 @@ for i in range(1,13): df_anom[str(i)] = df_anom[str(i)].astype(dtype='float32')
 
 if save_pkl == True:
 			
-	print('saving anomalies ...')
+    print('saving anomalies ...')
 
     df_anom.to_pickle( filename_anomalies, compression='bz2')
     
 #------------------------------------------------------------------------------
 print('** END')
-
 

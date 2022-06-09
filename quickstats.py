@@ -30,8 +30,8 @@ fontsize = 16
 fix_known_cases = False    # ( default = False ) NB: True --> updates df_temp_qc dataframe
 percentile_filter = False  # ( default = False ) NB: True --> updates df_temp_qc dataframe
 save_pkl = False           # ( default = False ) NB: True --> overwrites df_temp_qc dataframe
+test_station = True        # ( default = False )
 
-test_station = True       # ( default = False )
 base_start, base_end = 1961, 1990
 stationname, stationcode = 'CET', '037401'
 

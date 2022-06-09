@@ -39,15 +39,21 @@ global_monthly_max = +56.7 # 10 July 1913: Furnace Creek (Greenland Ranch), CA, 
 
 base_start, base_end = 1961, 1990
 
-load_df = False               # ( default = False ) --> load pre-calculated pkl
+load_df = False               # ( default = False ) True --> load pre-calculated pkl
 use_pickle = True             # ( default = True  ) False --> CSV
+float64 = True                # ( detault = True  ) False --> float32
 
-include_cru = False           # ( default = False )
-fix_names = True              # ( default = True  ) 
-fix_countries = True          # ( default = True  )
-fix_unphysical = True         # ( default = True  ) 
-require_elevation = False     # ( default = False )
-require_geolocation = True    # ( default = True  )
+if float64 == True: 
+    precision = 'float64' 
+else: 
+    precision = 'float32'
+
+include_cru = False           # ( default = False ) True --> also cruindex and gridcell
+fix_names = True              # ( default = True  ) False --> leave with special chars
+fix_countries = True          # ( default = True  ) False --> leave with special chars
+fix_unphysical = True         # ( default = True  ) True --> set outliers > WMO extrema to NaN
+require_elevation = False     # ( default = False ) True --> filter out stations with no elevation
+require_geolocation = True    # ( default = True  ) True --> filter out stations with no geolocation
 
 filename_pkl = 'df_temp_qc.pkl'
 filename_csv = 'df_temp_qc.csv'
@@ -228,7 +234,7 @@ def load_dataframe(filename_txt):
         a = df['stationname']
 #       b = pd.Series( [ re.sub('[^A-Za-z0-9 ]+', '', a.values[i]) for i in range(len(a)) ] )
         b = pd.Series( [ re.sub('[^A-Za-z0-9]+', ' ', a.values[i]) for i in range(len(a)) ] )
-        df['stationname'] = pd.Series( b )
+        df['stationname'] = pd.Series( b.str.upper() )
 
     # COUNTRIES: remove odd characters from station countries
 
@@ -238,7 +244,7 @@ def load_dataframe(filename_txt):
 
         a = df['stationcountry']
         b = pd.Series( [ re.sub('[^A-Za-z]+', ' ', a.values[i]) for i in range(len(a)) ] )
-        df['stationcountry'] = b
+        df['stationcountry'] = pd.Series( b.str.upper() )
         
     # FIRSTYEAR: replace missing station firstyear with '-9999'
 
@@ -413,10 +419,10 @@ else:
     #------------------------------------------------------------------------------
 
     df['year'] = df['year'].astype('int16')
-    for j in range(1,13): df[ str(j) ] = df[ str(j) ].astype('float32')        
-    df['stationlat'] = df['stationlat'].astype('float32')
-    df['stationlon'] = df['stationlon'].astype('float32')
-    df['stationelevation'] = df['stationelevation'].astype('float32')
+    for j in range(1,13): df[ str(j) ] = df[ str(j) ].astype( precision )        
+    df['stationlat'] = df['stationlat'].astype( precision )
+    df['stationlon'] = df['stationlon'].astype( precision )
+    df['stationelevation'] = df['stationelevation'].astype( precision )
     df['stationfirstyear'] = df['stationfirstyear'].astype('int16')
     df['stationlastyear'] = df['stationlastyear'].astype('int16')
     df['stationsource'] = df['stationsource'].astype('int8')

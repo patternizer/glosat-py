@@ -34,9 +34,15 @@ base_start, base_end = 1961, 1990
 #normals_file = 'normals5.GloSAT.prelim03_FRYuse_ocPLAUS1_iqr3.600reg0.3_19411990_MIN15_OCany_19611990_MIN15_PERDEC00_NManySDreq.txt'
 normals_file = 'normals5.GloSAT.prelim04_FRYuse_ocPLAUS1_iqr3.600reg0.3_19411990_MIN15_OCany_19611990_MIN15_PERDEC00_NManySDreq.txt'
 
-load_df_normals = False # ( default = False ) --> load pre-calculated pkl
-check_normals = True    # ( default = False ) 
+load_df_normals = False # ( default = False ) True --> load pre-calculated pkl
+check_normals = False   # ( default = False ) True --> compare loaded vs MIN15 data-driven normals
+float64 = True          # ( detault = True  ) False --> float32
 
+if float64 == True: 
+    precision = 'float64' 
+else: 
+    precision = 'float32'
+    
 filename_normals = 'df_normals_qc.pkl'
 filename_temp = 'df_temp_qc.pkl'
 
@@ -95,7 +101,7 @@ else:
             normalpercentage12s.append(normalpercentage12)
     f.close()
     
-    normal12s = np.array(normal12s).astype(float)
+    normal12s = np.array(normal12s).astype( precision )
     normalpercentage12s = np.array(normalpercentage12s).astype(int)
 
     df_normals = pd.DataFrame({
@@ -174,15 +180,8 @@ if check_normals == True:
     df_normals2_means = df_normals2[ (df_normals2['year']>=base_start) & (df_normals2['year']<=base_end)].groupby(['stationcode']).mean().iloc[:,1:13] # climatological means
     df_normals2_mask = df_normals2[ (df_normals2['year']>=base_start) & (df_normals2['year']<=base_end)].groupby(['stationcode']).count().iloc[:,1:13] >= 15 # boolean mask for n>=15 in baseline
     df_normals2 = df_normals2_means[df_normals2_mask] # normals
-    df_normals2 = df_normals2.astype(float) # float64
-    
-    # ALIGN: pointers
-
-    # stationcode_1 = df_normals1.index
-    # stationcode_2 = df_normals2.index
-    # idx = np.sort( list( set(stationcode_1) - set(stationcode_2) ) )    
-    # df_normals1 = df_normals1.drop(idx)
-    
+    df_normals2 = df_normals2.astype( precision )
+        
     # DIFF:
     
     normals_diff = df_normals1 - df_normals2
