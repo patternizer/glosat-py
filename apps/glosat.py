@@ -1,8 +1,8 @@
 #------------------------------------------------------------------------------
 # PROGRAM: glosat.py
 #------------------------------------------------------------------------------
-# Version 0.17
-# 7 April, 2022
+# Version 0.18
+# 10 June, 2022
 # Michael Taylor
 # https://patternizer.github.io
 # michael DOT a DOT taylor AT uea DOT ac DOT uk
@@ -11,36 +11,29 @@
 
 # Numerics and dataframe libraries:
 import numpy as np
-#import numpy.ma as ma
-import scipy
-import scipy.stats as stats    
+import numpy.ma as ma
 import pandas as pd
 import xarray as xr
 import pickle
+
+# Stats libraries:
+import scipy
+import scipy.stats as stats    
+
 # Plotting libraries:
 import matplotlib
 import matplotlib.pyplot as plt; plt.close('all')
 import matplotlib.cm as cm
-#import matplotlib.colors as c
-#from matplotlib.colors import Normalize
-#from matplotlib import colors as mcol
-#from matplotlib.cm import ScalarMappable
 from pandas.plotting import register_matplotlib_converters
 register_matplotlib_converters()
 matplotlib.rcParams['text.usetex'] = False
-#import matplotlib.dates as mdates
-#import matplotlib.colors as mcolors
-#import matplotlib.ticker as mticker
-#from matplotlib.collections import PolyCollection
-#from mpl_toolkits import mplot3d
-#from mpl_toolkits.mplot3d import Axes3D
-#from mpl_toolkits.mplot3d import proj3d
 import cmocean
-# Plotly libraries
-#import plotly.express as px
+
+# Plotly libraries:
+import plotly.express as px
 import plotly.graph_objects as go
-#from plotly.subplots import make_subplots
-# App Deployment Libraries
+
+# App Deployment Libraries:
 import dash
 from dash.dependencies import Input, Output
 from dash import dcc
@@ -88,9 +81,9 @@ df_anom = pd.read_pickle('df_anom_app.pkl', compression='bz2')
 # CONVERT: stationelevation to string and replace empty with 'unknown'
 #------------------------------------------------------------------------------
 
-mask = ~np.isfinite( df_temp['stationelevation'] )
-df_temp['stationelevation'] = df_temp['stationelevation'].astype(str)
-df_temp['stationelevation'].replace('nan','None')
+#mask = ~np.isfinite( df_temp['stationelevation'] )
+#df_temp['stationelevation'] = df_temp['stationelevation'].astype(str)
+#df_temp['stationelevation'].replace('nan','None')
 
 #------------------------------------------------------------------------------
 # CONSTRUCT: dropdown list
@@ -135,7 +128,7 @@ layout = html.Div([
             ),                        
 
             dbc.Col(html.Div([
-#                dcc.Graph(id="plot-worldmap", style = {'padding' : '10px', 'width': '100%', 'display': 'inline-block'}),                                    
+                dcc.Graph(id="plot-worldmap", style = {'padding' : '10px', 'width': '100%', 'display': 'inline-block'}),                                    
             ]), 
             width={'size':6}, 
             ),            
@@ -222,8 +215,7 @@ def update_station_info(value):
             cells=dict(values=[
                     [str(lat)], 
                     [str(lon)],
-#                    [str(elevation)],
-                    [elevation],
+                    [str(elevation)],
                     [station], 
                     [country], 
                 ],
@@ -237,7 +229,6 @@ def update_station_info(value):
 
     return {'data': data, 'layout':layout} 
 
-'''
 @app.callback(
     Output(component_id='plot-worldmap', component_property='figure'),
     [Input(component_id='station', component_property='value')],                   
@@ -275,7 +266,6 @@ def update_plot_worldmap(value):
     fig.update_layout(height=400, width=550, margin={"r":10,"t":50,"l":10,"b":40})    
     
     return fig
-'''
 
 @app.callback(
     Output(component_id='plot-stripes', component_property='figure'),
