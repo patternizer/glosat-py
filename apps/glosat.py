@@ -133,11 +133,13 @@ layout = html.Div([
             ]), 
             width={'size':6}, 
             ),                        
+
             dbc.Col(html.Div([
                 dcc.Graph(id="plot-worldmap", style = {'padding' : '10px', 'width': '100%', 'display': 'inline-block'}),                                    
             ]), 
             width={'size':6}, 
             ),            
+
         ]),
 
         dbc.Row([
@@ -220,7 +222,8 @@ def update_station_info(value):
             cells=dict(values=[
                     [str(lat)], 
                     [str(lon)],
-                    [str(elevation)],
+#                    [str(elevation)],
+                    [elevation],
                     [station], 
                     [country], 
                 ],
