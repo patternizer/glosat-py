@@ -17,7 +17,6 @@ from dash import html
 #import dash_html_components as html
 import dash_bootstrap_components as dbc
 
-
 plot_fry = 'url(/assets/emily-stations-fry.png)'
 plot_stripes = 'url(/assets/plot-stripes.png)'
 plot_location = 'url(/assets/plot-location.png)'

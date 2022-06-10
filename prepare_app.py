@@ -37,12 +37,15 @@ filename_anom_in = 'df_anom_qc.pkl'
 filename_temp_out = 'df_temp_app.pkl'
 filename_anom_out = 'df_anom_app.pkl'
 
+filename_normals = 'df_normals_qc.pkl'
+
 #------------------------------------------------------------------------------
 # LOAD: dataframes
 #------------------------------------------------------------------------------
 
 df_temp = pd.read_pickle( filename_temp_in, compression='bz2' )
 df_anom = pd.read_pickle( filename_anom_in, compression='bz2' )
+df_normals = pd.read_pickle( filename_normals, compression='bz2' )
 
 #------------------------------------------------------------------------------
 # DROP: unused variables
@@ -50,6 +53,20 @@ df_anom = pd.read_pickle( filename_anom_in, compression='bz2' )
 
 df_temp.drop( columns = ['stationfirstyear','stationlastyear','stationsource','stationfirstreliable'], inplace=True)
 df_anom.drop( columns = ['stationfirstyear','stationlastyear','stationsource','stationfirstreliable'], inplace=True )
+
+print('IN (column memory size):')
+print('df_temp:', getsizeof( df_temp ) )
+print('df_anom:', getsizeof( df_anom ) )
+
+for i in range(len(df_temp.columns)): print( getsizeof( df_temp.iloc[:,i] ) ) 
+for i in range(len(df_anom.columns)): print( getsizeof( df_anom.iloc[:,i] ) ) 
+
+#------------------------------------------------------------------------------
+# DROP: stations without normals
+#------------------------------------------------------------------------------
+
+df_temp = df_temp[ df_temp['stationcode'].isin(df_normals[df_normals['sourcecode']>1]['stationcode'])]
+df_anom = df_anom[ df_anom['stationcode'].isin(df_normals[df_normals['sourcecode']>1]['stationcode'])]
 
 print('IN (column memory size):')
 print('df_temp:', getsizeof( df_temp ) )
