@@ -37,7 +37,7 @@ matplotlib.rcParams['text.usetex'] = False
 #from mpl_toolkits.mplot3d import proj3d
 import cmocean
 # Plotly libraries
-import plotly.express as px
+#import plotly.express as px
 import plotly.graph_objects as go
 #from plotly.subplots import make_subplots
 # App Deployment Libraries
@@ -135,7 +135,7 @@ layout = html.Div([
             ),                        
 
             dbc.Col(html.Div([
-                dcc.Graph(id="plot-worldmap", style = {'padding' : '10px', 'width': '100%', 'display': 'inline-block'}),                                    
+#                dcc.Graph(id="plot-worldmap", style = {'padding' : '10px', 'width': '100%', 'display': 'inline-block'}),                                    
             ]), 
             width={'size':6}, 
             ),            
@@ -237,6 +237,7 @@ def update_station_info(value):
 
     return {'data': data, 'layout':layout} 
 
+'''
 @app.callback(
     Output(component_id='plot-worldmap', component_property='figure'),
     [Input(component_id='station', component_property='value')],                   
@@ -274,6 +275,7 @@ def update_plot_worldmap(value):
     fig.update_layout(height=400, width=550, margin={"r":10,"t":50,"l":10,"b":40})    
     
     return fig
+'''
 
 @app.callback(
     Output(component_id='plot-stripes', component_property='figure'),
