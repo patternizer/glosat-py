@@ -8,7 +8,7 @@
 # patternizer AT gmail DOT com
 #------------------------------------------------------------------------------
 
-import dash
+#import dash
 from dash import dcc
 from dash import html
 #import dash_core_components as dcc
