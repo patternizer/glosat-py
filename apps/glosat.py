@@ -191,7 +191,7 @@ layout = html.Div([
 @app.callback(
     Output(component_id='station-info', component_property='figure'),
     [Input(component_id='station', component_property='value')],    
-    )
+    interval=3000)
     
 def update_station_info(value):
     
@@ -233,7 +233,7 @@ def update_station_info(value):
 @app.callback(
     Output(component_id='plot-worldmap', component_property='figure'),
     [Input(component_id='station', component_property='value')],                   
-    )
+    interval=3000)
 
 def update_plot_worldmap(value):
     
@@ -272,7 +272,7 @@ def update_plot_worldmap(value):
 @app.callback(
     Output(component_id='plot-stripes', component_property='figure'),
     [Input(component_id='station', component_property='value')],         
-    )
+    interval=3000)
 
 def update_plot_stripes(value):
     
@@ -352,7 +352,7 @@ def update_plot_stripes(value):
 @app.callback(
     Output(component_id='plot-timeseries', component_property='figure'),
     [Input(component_id='station', component_property='value')],    
-    )
+    interval=3000)
     
 def update_plot_timeseries(value):
     
@@ -473,7 +473,7 @@ def update_plot_timeseries(value):
 @app.callback(
     Output(component_id='plot-seasons', component_property='figure'),
     [Input(component_id='station', component_property='value')],    
-    )
+    interval=3000)
     
 def update_plot_seasons(value):
     
@@ -592,7 +592,7 @@ def update_plot_seasons(value):
 @app.callback(
     Output(component_id='plot-climatology', component_property='figure'),
     [Input(component_id='station', component_property='value')],              
-    )
+    interval=3000)
 
 def update_plot_climatology(value):
     
@@ -749,7 +749,7 @@ def update_plot_climatology(value):
 @app.callback(
     Output(component_id='plot-ranks', component_property='figure'),
     [Input(component_id='station', component_property='value')],              
-    )
+    interval=3000)
 
 def update_plot_ranks(value):
     
@@ -873,7 +873,7 @@ def update_plot_ranks(value):
 @app.callback(
     Output(component_id='plot-spiral', component_property='figure'),
     [Input(component_id='station', component_property='value')],              
-    )
+    interval=3000)
 
 def update_plot_spiral(value):
     
