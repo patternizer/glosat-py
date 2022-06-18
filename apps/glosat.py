@@ -43,6 +43,10 @@ from dash import html
 import dash_bootstrap_components as dbc
 from app import app
 
+import base64
+plot_stations = 'assets/plot-stations.png'
+encoded_image = base64.b64encode(open(plot_stations, 'rb').read())
+
 #------------------------------------------------------------------------------
 import filter_cru_dft as cru # CRU DFT filter
 #------------------------------------------------------------------------------
@@ -111,7 +115,7 @@ layout = html.Div([
                     style = {"color": "black", 'padding' : '10px', 'width': '100%', 'display': 'inline-block'},
                 ),                                    
             ], className="dash-bootstrap"), 
-            width=4, 
+            width=6, 
             ),             
             dbc.Col( html.Div([
                 dcc.Graph(id="station-info", style = {'padding' : '10px', 'width': '100%', 'display': 'inline-block'}), 
@@ -128,6 +132,9 @@ layout = html.Div([
             ),                        
 
             dbc.Col(html.Div([
+            
+	         html.Img(src='data:image/png;base64,{}'.format(encoded_image.decode()), height=420, style = {'padding' : '10px', 'width': '100%', 'display': 'inline-block'})
+  
 #                dcc.Graph(id="plot-worldmap", style = {'padding' : '10px', 'width': '100%', 'display': 'inline-block'}),                                    
             ]), 
             width={'size':6}, 
@@ -229,6 +236,7 @@ def update_station_info(value):
 
     return {'data': data, 'layout':layout} 
 
+                
 '''
 @app.callback(
     Output(component_id='plot-worldmap', component_property='figure'),
