@@ -29,7 +29,8 @@ float64 = False # ( detault = False  )
 if float64 == True: 
     precision = 'float64' 
 else: 
-    precision = 'float32'
+#    precision = 'float32'
+    precision = 'float16'
     
 filename_temp_in = 'df_temp_qc.pkl'
 filename_anom_in = 'df_anom_qc.pkl'
