@@ -28,11 +28,20 @@ import seaborn as sns; sns.set()
 
 tstart, tend = 1781, 2022
 
+use_datetime = False 	# ( default = False ) False --> yearly rows
+use_monthstart = True 	# ( default = True  ) False --> mid-month datetimes
+
+input_file = 'df_temp_qc.pkl'
+output_file = 'df_temp_qc_full.pkl'
+
 #input_file = 'df_anom_qc.pkl'
 #output_file = 'df_anom_qc_full.pkl'
 
-input_file = 'df_exposure_bias.pkl'
-output_file = 'df_exposure_bias_full.pkl'
+#input_file = 'df_temp_ebc.pkl'
+#output_file = 'df_temp_ebc_full.pkl'
+
+#input_file = 'df_ebc.pkl'
+#output_file = 'df_ebc_full.pkl'
 
 #------------------------------------------------------------------------------
 # METHODS
@@ -40,13 +49,17 @@ output_file = 'df_exposure_bias_full.pkl'
 
 def make_timeseries( da, tstart, tend  ):
       
-#    t_full = np.arange( tstart, tend + 1 )
-#    df_full = pd.DataFrame( {'year':t_full} )
-#    db = df_full.merge( da, how='left', on='year' )
+    if use_datetime == False:
+          
+        t_full = np.arange( tstart, tend + 1 )
+        df_full = pd.DataFrame( {'year':t_full} )
+        db = df_full.merge( da, how='left', on='year' )
+        
+    else:
 
-    t_full = pd.date_range( start = str(tstart), end = str(tend), freq='MS')[0:-1]
-    df_full = pd.DataFrame( {'datetime':t_full} )
-    db = df_full.merge( da, how='left', on='datetime' )
+        t_full = pd.date_range( start = str(tstart), end = str(tend), freq='MS')[0:-1]
+        df_full = pd.DataFrame( {'datetime':t_full} )
+        db = df_full.merge( da, how='left', on='datetime' )
 
     return db
 
@@ -57,25 +70,20 @@ def make_timeseries( da, tstart, tend  ):
 df = pd.read_pickle( input_file, compression='bz2' )
 stationcodes = df.stationcode.unique()
 
-#plt.plot(df.groupby('datetime').mean().bias)
-
 #------------------------------------------------------------------------------
 # EXTEND: time axis for each station
 #------------------------------------------------------------------------------
 
 ds = []
-#for k in range( len( stationcodes ) ):
-for k in range( 20 ):
+for k in range( len( stationcodes ) ):
                                 
-    da = df[ df.stationcode == stationcodes[k] ].reset_index( drop=True )
-    da['datetime'] = da['datetime'] -timedelta(days=14)
+    da = df[ df.stationcode == stationcodes[k] ].reset_index( drop=True )        
+
+    if use_datetime == True:
+        if use_monthstart == True:    
+            da['datetime'] = da['datetime'] - timedelta(days=14)
     
     db = make_timeseries( da, tstart, tend )        
-
-    ############################
-    # RESHAPE to monthlies here 
-    ############################
-    
               
     # APPEND: dataframe to mothership
 
@@ -89,13 +97,13 @@ ds = pd.concat(ds, axis=0)
 
 # REINDEX:
 
-df_anom_full = ds.reset_index( drop=True )
+ds_full = ds.reset_index( drop=True )
            
 #------------------------------------------------------------------------------
 # SAVE: output .pkl file
 #------------------------------------------------------------------------------
 
-df_anom_full.to_pickle( output_file, compression='bz2' )
+ds_full.to_pickle( output_file, compression='bz2' )
 
 #------------------------------------------------------------------------------
 print('** END')

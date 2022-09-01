@@ -4,8 +4,8 @@
 #------------------------------------------------------------------------------
 # PROGRAM: load-stations-qc.py
 #------------------------------------------------------------------------------
-# Version 0.2
-# 27 May, 2022
+# Version 0.4
+# 1 September, 2022
 # Michael Taylor
 # https://patternizer.github.io
 # patternizer AT gmail DOT com
@@ -25,11 +25,14 @@ import re
 # SETTINGS: 
 #------------------------------------------------------------------------------
 
+# NB: COPY: to /
+
 #filename_txt = 'stat4.CRUTEM5.1prelim01.1721-2019.txt'
 #filename_txt = 'stat4.GloSATprelim02.1658-2020.txt'
 #filename_txt = 'stat4.GloSATprelim03.1658-2020.txt'
-filename_txt = 'stat4.GloSATprelim04.1658-2021.txt'
-#filename_txt = 'stat4.postqc.GloSAT.prelim04_FRYuse_ocPLAUS1_iqr3.600reg0.3_19411990_MIN15_OCany_19611990_MIN15_PERDEC00_NManySDreq.txt' # 1658-2021
+#filename_txt = 'stat4.GloSATprelim04.1658-2021.txt'
+#filename_txt = 'stat4.postqc.GloSAT.prelim04_FRYuse_ocPLAUS1_iqr3.600reg0.3_19411990_MIN15_OCany_19611990_MIN15_PERDEC00_NManySDreq.txt'
+filename_txt = 'stat4.postqc.GloSAT.prelim04c.1781LEKnorms_FRYuse_ocPLAUS1_iqr3.600reg0.3simpleSD4.0_19411990_MIN15_OCany_19611990_MIN15_PERDEC00_NManySDreq.txt'
 
 # WMO extreme values:
 # https://wmo.asu.edu/content/world-meteorological-organization-global-weather-climate-extremes-archive
@@ -48,7 +51,7 @@ if float64 == True:
 else: 
     precision = 'float32'
 
-include_cru = False           # ( default = False ) True --> also cruindex and gridcell
+include_cru = True            # ( default = True ) True --> also cruindex and gridcell
 fix_names = True              # ( default = True  ) False --> leave with special chars
 fix_countries = True          # ( default = True  ) False --> leave with special chars
 fix_unphysical = True         # ( default = True  ) True --> set outliers > WMO extrema to NaN
@@ -71,7 +74,7 @@ def load_dataframe(filename_txt):
     # load .txt file (comma separated) into pandas dataframe
 
     # station header sample:    
-    # [067250 464  -78 1538 BLATTEN, LOETSCHENTA SWITZERLAND   20012012  982001    9999]
+    # [990900 660  -20    6 MIKE                 NORWAY        19492009  731949  002757]
         
     # station data sample:
     # [1921  -44  -71  -68  -46  -12   17   42   53   27  -20  -21  -40]
@@ -89,9 +92,13 @@ def load_dataframe(filename_txt):
     stationsource = []
     stationfirstreliable = []
     stationfirstreliable = []
-    stationcruindex = []
-    stationgridcell = []
-    
+
+    # NB: 5/8/2022 - many errors in cruindex & gridcell fields (also overlapping space) --> extract last 8 chars into str
+
+    # stationcruindex = []
+    # stationgridcell = []
+    stationcrustr = []
+   
     with open (filename_txt, 'r', encoding="ISO-8859-1") as f:  
                     
         for line in f:   
@@ -113,7 +120,7 @@ def load_dataframe(filename_txt):
                     #    (ch. 61-64) Last year of monthly temperature data                    
                     #    (ch. 67-68) Data Source (see below)                    
                     #    (ch. 69-72) First reliable year (generally the same as the first year)                    
-                    #    (ch. 73-76) Unique index number (internal use)                    
+                    #    (ch. 73-76) Unique index number (internal use)       
                     #    (ch. 77-80) Index into the 5° x 5° gridcells (internal use)  
                     #
                     # NB: char positions differ due to empty space counts difference
@@ -128,9 +135,11 @@ def load_dataframe(filename_txt):
                     lastyear = line[60:64].strip()
                     source = line[66:68].strip()
                     firstreliable = line[68:72].strip()
-                    cruindex = line[72:76].strip()
-                    gridcell = line[76:80].strip()
-                                                
+
+                    # cruindex = line[72:76].strip()
+                    # gridcell = line[76:80].strip()                    
+                    crustr = line[72:80].strip()
+                                                                    
                 else:           
                     yearlist.append( int( line.strip().split()[0] ) )                                 
                     monthlist.append( np.array( line.strip().split()[1:] ) )     
@@ -145,9 +154,11 @@ def load_dataframe(filename_txt):
                     stationlastyear.append( lastyear )
                     stationsource.append( source )
                     stationfirstreliable.append( firstreliable )
-                    stationcruindex.append( cruindex )
-                    stationgridcell.append( gridcell )
 
+                    # stationcruindex.append( cruindex )
+                    # stationgridcell.append( gridcell )
+                    stationcrustr.append( crustr)
+                    
             else:                
                 continue
     f.close
@@ -169,8 +180,9 @@ def load_dataframe(filename_txt):
 
     if include_cru == True:
 
-        df['stationcruindex'] = stationcruindex 
-        df['stationgridcell'] = stationgridcell
+        # df['stationcruindex'] = stationcruindex 
+        # df['stationgridcell'] = stationgridcell
+        df['stationcrustr'] = stationcrustr 
 
     #==============================================================================
     # QUALITY CONTROL
@@ -184,8 +196,6 @@ def load_dataframe(filename_txt):
     idx = b[a!=12]
     for i in range(len(idx)):			
         monthlist[ idx[i] ] = np.array(['-999']*12)
-#   repair = monthlist[ idx[0] ] 
-#   monthlist[ idx[0] ] = np.array( list(repair[0:3].ravel()) + list(['91','-999']) + list(repair[4:].ravel()) )
     
     # CODE: coerce station codes to be 6 digit by adding leading 0 to 5-digit codes
 
@@ -232,7 +242,6 @@ def load_dataframe(filename_txt):
         print('fixing names ...')
 
         a = df['stationname']
-#       b = pd.Series( [ re.sub('[^A-Za-z0-9 ]+', '', a.values[i]) for i in range(len(a)) ] )
         b = pd.Series( [ re.sub('[^A-Za-z0-9]+', ' ', a.values[i]) for i in range(len(a)) ] )
         df['stationname'] = pd.Series( b.str.upper() )
 
@@ -284,28 +293,49 @@ def load_dataframe(filename_txt):
 
     if include_cru == True:
 
-        # CRUINDEX: set non-numeric station cruindex to -9999
+        '''
         
-        print('replacing missing stationcruindex with -9999 ... ')
+        # CRUINDEX: set non-numeric station cruindex to -999
+        
+        print('replacing missing stationcruindex with -999 ... ')
 
         a = np.array( df.stationcruindex ); b = np.arange(len(a))
         mask_inverse = np.array( [ a[i].isdigit() for i in range(len(a)) ] )
         mask = np.invert( mask_inverse )
         idx = b[mask]
-        df['stationcruindex'].loc[idx] = '-9999'
-        df['stationcruindex'] = df['stationcruindex'].astype(int)
+        df['stationcruindex'].loc[idx] = '-999'
             
-        # GRIDCELL: set non-numeric station gridcell to -9999
+        # GRIDCELL: set non-numeric station gridcell to -999
         
-        print('replacing missing stationgridcell with -9999 ... ')
+        print('replacing missing stationgridcell with -999 ... ')
         
         a = np.array( df.stationgridcell ); b = np.arange(len(a))
         mask_inverse = np.array( [ a[i].isdigit() for i in range(len(a)) ] )
         mask = np.invert( mask_inverse )
         idx = b[mask]
-        df['stationgridcell'].loc[idx] = '-9999'
-        df['stationgridcell'] = df['stationgridcell'].astype(int)
+        df['stationgridcell'].loc[idx] = '-999'
 
+        '''
+        
+        # CRUSTR: set non-numeric station crustr to -999
+        
+        print('replacing missing stationcrustr with -999999 ... ')
+        
+        a = np.array( df.stationcrustr ); b = np.arange(len(a))
+        c = np.array( [len(a[i]) for i in range(len(a))] )
+        a[c>6] = '-999999'
+        a[a=='0'] = '-999999'       # (2204 stations)
+        a[a=='000000'] = '-999999'  # Thailand (39 stations) + Namibia (3 stations), Botswana(Francistown)
+        a[a=='666666'] = '-999999'  # India (12 stations)
+        a[a=='777777'] = '-999999'  # China (40 stations) + Jamaica(Worthy Park), North Korea(Chunggang), Cyprus(Larnaca)
+        a[a=='888888'] = '-999999'  # (873 stations): mostly South America + Indonesia + Islands
+        a[a=='999999'] = '-999999'  # (413 stations): mostly France, Portugal + Uganda, Switzerland, China, UK, USA
+        
+        mask_inverse = np.array( [ a[i].isdigit() for i in range(len(a)) ] )               
+        mask = np.invert( mask_inverse )
+        idx = b[mask]
+        df['stationcrustr'].loc[idx] = '-999999'            
+        
     #------------------------------------------------------------------------------    
     # CONVERT: float variables from list of str to int (needed for NaN replacement of fill Values)   
     #------------------------------------------------------------------------------
@@ -321,8 +351,9 @@ def load_dataframe(filename_txt):
 
     if include_cru == True:
         
-        df['stationcruindex'] = df['stationcruindex'].astype(int)
-        df['stationgridcell'] = df['stationgridcell'].astype(int) 
+        # df['stationcruindex'] = df['stationcruindex'].astype(int)
+        # df['stationgridcell'] = df['stationgridcell'].astype(int) 
+        df['stationcrustr'] = df['stationcrustr'].astype(int) 
         
     #------------------------------------------------------------------------------
     # REPLACE: float variable fill values with NaN:
@@ -339,10 +370,11 @@ def load_dataframe(filename_txt):
     df['stationsource'].replace(-99, np.nan, inplace=True)
     df['stationfirstreliable'].replace(-9999, np.nan, inplace=True)
 
-    if include_cru == True:
+    # if include_cru == True:
         
-        df['stationcruindex'].replace(-9999, np.nan, inplace=True)
-        df['stationgridcell'].replace(-9999, np.nan, inplace=True)
+        # df['stationcruindex'].replace(-999, np.nan, inplace=True)
+        # df['stationgridcell'].replace(-999, np.nan, inplace=True)
+        # df['stationcrustr'].replace(-999999, np.nan, inplace=True)
         
     #------------------------------------------------------------------------------
     # APPLY: scale factors
@@ -428,10 +460,11 @@ else:
     df['stationsource'] = df['stationsource'].astype('int8')
     df['stationfirstreliable'] = df['stationfirstreliable'].astype('int16')
 
-    if include_cru == True:
+    # if include_cru == True:
     
-        df['stationcruindex'] = df['stationcruindex'].astype('int16')
-        df['stationgridcell'] = df['stationgridcell'].astype('int16')
+        # df['stationcruindex'] = df['stationcruindex'].astype('int16')
+        # df['stationgridcell'] = df['stationgridcell'].astype('int16')
+        # df['stationcrustr'] = df['stationcrustr'].astype('int16')
         
 #==============================================================================
 # SAVE: dataframe

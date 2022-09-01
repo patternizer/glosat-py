@@ -179,7 +179,7 @@ layout = html.Div([
                 html.Br(),
                 html.Label(['Status: Experimental']),
                 html.Br(),
-                html.Label(['Dataset: GloSAT.p04']),
+                html.Label(['Dataset: GloSAT.p04c']),
                 html.Br(),
                 html.Label(['Codebase: ', html.A('Github', href='https://github.com/patternizer/glosat-py')]),                
             ],

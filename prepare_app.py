@@ -4,8 +4,8 @@
 #------------------------------------------------------------------------------
 # PROGRAM: prepare_app.py
 #------------------------------------------------------------------------------
-# Version 0.1
-# 9 June, 2022
+# Version 0.3
+# 1 September, 2022
 # Michael Taylor
 # https://patternizer.github.io
 # patternizer AT gmail DOT com
@@ -51,8 +51,11 @@ df_normals = pd.read_pickle( filename_normals, compression='bz2' )
 # DROP: unused variables
 #------------------------------------------------------------------------------
 
-df_temp.drop( columns = ['stationfirstyear','stationlastyear','stationsource','stationfirstreliable'], inplace=True)
-df_anom.drop( columns = ['stationfirstyear','stationlastyear','stationsource','stationfirstreliable'], inplace=True )
+#df_temp.drop( columns = ['stationfirstyear','stationlastyear','stationsource','stationfirstreliable'], inplace=True)
+#df_anom.drop( columns = ['stationfirstyear','stationlastyear','stationsource','stationfirstreliable'], inplace=True )
+
+df_temp.drop( columns = ['stationfirstyear','stationlastyear','stationsource','stationfirstreliable','stationcrustr'], inplace=True)
+df_anom.drop( columns = ['stationfirstyear','stationlastyear','stationsource','stationfirstreliable','stationcrustr'], inplace=True )
 
 print('IN (column memory size):')
 print('df_temp:', getsizeof( df_temp ) )
