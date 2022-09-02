@@ -9,12 +9,7 @@
 # patternizer AT gmail DOT com
 #------------------------------------------------------------------------------
 
-import dash
-from dash.dependencies import Input, Output
-from dash import dcc
-from dash import html
-#import dash_core_components as dcc
-#import dash_html_components as html
+from dash import Dash, callback, html, dcc, dash_table, Input, Output, State, MATCH, ALL
 import dash_bootstrap_components as dbc
 
 layout = html.Div([
