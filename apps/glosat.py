@@ -129,7 +129,7 @@ layout = html.Div([
 
             dbc.Col(html.Div([
             
-	         html.Img(src='data:image/png;base64,{}'.format(encoded_image.decode()), height=420, style = {'padding' : '10px', 'width': '100%', 'display': 'inline-block'})
+	         html.Img(src='data:image/png;base64,{}'.format(encoded_image.decode()), height=420, style = {'padding' : '10px', 'width': '105%', 'display': 'inline-block'})
   
 #                dcc.Graph(id="plot-worldmap", style = {'padding' : '10px', 'width': '100%', 'display': 'inline-block'}),                                    
             ]), 
