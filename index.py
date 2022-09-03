@@ -8,16 +8,11 @@
 # patternizer AT gmail DOT com
 #------------------------------------------------------------------------------
 
-#import dash
-from dash import dcc
-from dash import html
-#import dash_core_components as dcc
-#import dash_html_components as html
-from dash.dependencies import Input, Output, State
+from dash import Dash, callback, html, dcc, dash_table, Input, Output, State, MATCH, ALL
 import dash_bootstrap_components as dbc
-
 from app import server
 from app import app
+
 # import all pages in the app
 from apps import home, glosat, about, faq
 
