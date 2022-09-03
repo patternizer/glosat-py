@@ -43,6 +43,30 @@ import base64
 plot_stations = 'assets/plot-stations.png'
 encoded_image = base64.b64encode(open(plot_stations, 'rb').read())
 
+# Solving memory leak problem in pandas
+# https://github.com/pandas-dev/pandas/issues/2659#issuecomment-12021083
+import gc
+from ctypes import cdll, CDLL
+try:
+    cdll.LoadLibrary("libc.so.6")
+    libc = CDLL("libc.so.6")
+#    libc.malloc_trim(0)
+except (OSError, AttributeError):
+    libc = None
+
+__old_del = getattr(pd.DataFrame, '__del__', None)
+
+def __new_del(self):
+    if __old_del:
+        __old_del(self)
+#   libc.malloc_trim(0)
+
+if libc:
+#   print('Applying memory leak patch for pd.DataFrame.__del__', file=sys.stderr)
+    pd.DataFrame.__del__ = __new_del
+else:
+    print('Skipping memory leak patch for pd.DataFrame.__del__: libc not found', file=sys.stderr)
+
 #------------------------------------------------------------------------------
 import filter_cru_dft as cru # CRU DFT filter
 #------------------------------------------------------------------------------

@@ -16,8 +16,6 @@ external_stylesheets=[dbc.themes.DARKLY]
 #app = dash.Dash(__name__, title='GloSAT Station Viewer', update_title='Loading...', external_stylesheets=external_stylesheets)
 app = Dash(__name__, external_stylesheets=external_stylesheets)
 server = app.server
-#app = dash.Dash(__name__, server=server)
-#server = flask.Flask(__name__)
 app.config.suppress_callback_exceptions = True
 
 
