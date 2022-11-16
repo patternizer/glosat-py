@@ -4,8 +4,8 @@
 #------------------------------------------------------------------------------
 # PROGRAM: calc-anomalies-qc.py
 #------------------------------------------------------------------------------
-# Version 0.1
-# 2 June, 2022
+# Version 0.3
+# 9 November, 2022
 # Michael Taylor
 # https://patternizer.github.io
 # patternizer AT gmail DOT com

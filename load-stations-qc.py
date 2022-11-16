@@ -4,8 +4,8 @@
 #------------------------------------------------------------------------------
 # PROGRAM: load-stations-qc.py
 #------------------------------------------------------------------------------
-# Version 0.4
-# 1 September, 2022
+# Version 0.5
+# 9 November, 2022
 # Michael Taylor
 # https://patternizer.github.io
 # patternizer AT gmail DOT com
@@ -32,7 +32,8 @@ import re
 #filename_txt = 'stat4.GloSATprelim03.1658-2020.txt'
 #filename_txt = 'stat4.GloSATprelim04.1658-2021.txt'
 #filename_txt = 'stat4.postqc.GloSAT.prelim04_FRYuse_ocPLAUS1_iqr3.600reg0.3_19411990_MIN15_OCany_19611990_MIN15_PERDEC00_NManySDreq.txt'
-filename_txt = 'stat4.postqc.GloSAT.prelim04c.1781LEKnorms_FRYuse_ocPLAUS1_iqr3.600reg0.3simpleSD4.0_19411990_MIN15_OCany_19611990_MIN15_PERDEC00_NManySDreq.txt'
+#filename_txt = 'stat4.postqc.GloSAT.prelim04c.1781LEKnorms_FRYuse_ocPLAUS1_iqr3.600reg0.3simpleSD4.0_19411990_MIN15_OCany_19611990_MIN15_PERDEC00_NManySDreq.txt'
+filename_txt = 'stat4.postqc.GloSAT.prelim04c.EBC_FRYuse_ocPLAUS1_iqr3.600reg0.3_19411990_MIN15_OCany_19611990_MIN15_PERDEC00_NManySDreq.txt'
 
 # WMO extreme values:
 # https://wmo.asu.edu/content/world-meteorological-organization-global-weather-climate-extremes-archive

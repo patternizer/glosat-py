@@ -4,8 +4,8 @@
 #------------------------------------------------------------------------------
 # PROGRAM: load-normals-qc.py
 #------------------------------------------------------------------------------
-# Version 0.2
-# 1 September, 2022
+# Version 0.3
+# 9 November, 2022
 # Michael Taylor
 # https://patternizer.github.io
 # patternizer AT gmail DOT com
@@ -33,7 +33,8 @@ base_start, base_end = 1961, 1990
 #normals_file = 'normals5.GloSAT.prelim02_FRYuse_ocPLAUS1_iqr3.600reg0.3_19411990_MIN15_OCany_19611990_MIN15_PERDEC00_NManySDreq.txt'
 #normals_file = 'normals5.GloSAT.prelim03_FRYuse_ocPLAUS1_iqr3.600reg0.3_19411990_MIN15_OCany_19611990_MIN15_PERDEC00_NManySDreq.txt'
 #normals_file = 'normals5.GloSAT.prelim04_FRYuse_ocPLAUS1_iqr3.600reg0.3_19411990_MIN15_OCany_19611990_MIN15_PERDEC00_NManySDreq.txt'
-normals_file = 'normals5.GloSAT.prelim04c.1781LEKnorms_FRYuse_ocPLAUS1_iqr3.600reg0.3simpleSD4.0_19411990_MIN15_OCany_19611990_MIN15_PERDEC00_NManySDreq.txt'
+#normals_file = 'normals5.GloSAT.prelim04c.1781LEKnorms_FRYuse_ocPLAUS1_iqr3.600reg0.3simpleSD4.0_19411990_MIN15_OCany_19611990_MIN15_PERDEC00_NManySDreq.txt'
+normals_file = 'normals5.GloSAT.prelim04c.EBC_FRYuse_ocPLAUS1_iqr3.600reg0.3_19411990_MIN15_OCany_19611990_MIN15_PERDEC00_NManySDreq.txt'
 
 load_df_normals = False # ( default = False ) True --> load pre-calculated pkl
 check_normals = False   # ( default = False ) True --> compare loaded vs MIN15 data-driven normals
