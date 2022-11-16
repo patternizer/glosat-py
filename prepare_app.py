@@ -4,8 +4,8 @@
 #------------------------------------------------------------------------------
 # PROGRAM: prepare_app.py
 #------------------------------------------------------------------------------
-# Version 0.3
-# 1 September, 2022
+# Version 0.4
+# 9 November, 2022
 # Michael Taylor
 # https://patternizer.github.io
 # patternizer AT gmail DOT com
@@ -38,7 +38,7 @@ filename_anom_in = 'df_anom_qc.pkl'
 filename_temp_out = 'df_temp_app.pkl'
 filename_anom_out = 'df_anom_app.pkl'
 
-filename_normals = 'df_normals_qc.pkl'
+filename_normals_in = 'df_normals_qc.pkl'
 
 #------------------------------------------------------------------------------
 # LOAD: dataframes
@@ -46,7 +46,7 @@ filename_normals = 'df_normals_qc.pkl'
 
 df_temp = pd.read_pickle( filename_temp_in, compression='bz2' )
 df_anom = pd.read_pickle( filename_anom_in, compression='bz2' )
-df_normals = pd.read_pickle( filename_normals, compression='bz2' )
+df_normals = pd.read_pickle( filename_normals_in, compression='bz2' )
 
 #------------------------------------------------------------------------------
 # DROP: unused variables
